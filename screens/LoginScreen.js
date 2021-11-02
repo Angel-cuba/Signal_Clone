@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, KeyboardAvoidingView, Alert } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Alert } from 'react-native';
 import { Button, Input, Image } from 'react-native-elements';
 import { firebase } from '../firebase/firebase';
 

@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator();
 
 const globalScreenOptions = {
 	headerStyle: { backgroundColor: '#2C6BED' },
-	headerTitleStyle: { color: 'silver' },
+	headerTitleStyle: { color: '#f5f7fa' },
 	headerTintColor: { color: 'silver' },
 };
 
@@ -68,6 +68,7 @@ export default function App() {
 				<Stack.Screen
 					options={{
 						title: 'Login',
+						headerTitleAlign: 'center',
 					}}
 					name="Login"
 					component={LoginScreen}
