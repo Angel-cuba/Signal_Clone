@@ -14,12 +14,11 @@ import {
 import { Avatar, Input } from 'react-native-elements';
 import { AntDesign, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { db, firebase } from '../firebase/firebase';
+import TimeAgo from 'react-native-timeago';
 
 const ChatScreen = ({ navigation, route }) => {
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState([]);
-	// console.log(messages);
-	// console.log(route);
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: 'Chat',
@@ -72,7 +71,7 @@ const ChatScreen = ({ navigation, route }) => {
 			.collection('chat')
 			.doc(route.params.id)
 			.collection('messages')
-			.orderBy('timestamp', 'desc')
+			.orderBy('timestamp', 'asc')
 			.onSnapshot((snapshot) =>
 				setMessages(
 					snapshot.docs.map((doc) => ({
@@ -129,7 +128,16 @@ const ChatScreen = ({ navigation, route }) => {
 											top={-15}
 											size={30}
 										/>
-										<Text style={styles.recieverText}>{data.message}</Text>
+										<Text style={styles.recieverText}>
+											{data.message}
+											<Text>
+												<TimeAgo
+													time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
+													opts={{ minInterval: 60 }}
+													locale="fi"
+												/>
+											</Text>
+										</Text>
 									</View>
 								) : (
 									<View key={id} style={styles.sender}>
@@ -137,7 +145,6 @@ const ChatScreen = ({ navigation, route }) => {
 											source={{ uri: data.photoURL }}
 											position="absolute"
 											rounded
-											// WEB
 											containerStyle={{
 												position: 'absolute',
 												top: -15,
@@ -147,7 +154,18 @@ const ChatScreen = ({ navigation, route }) => {
 											top={-15}
 											size={30}
 										/>
-										<Text style={styles.senderText}>{data.message}</Text>
+										<Text style={styles.senderText}>
+											{data.message}
+
+											{/* <Text>{data.timestamp ? moment().fromNow() : '...'}</Text> */}
+											<Text>
+												<TimeAgo
+													time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
+													opts={{ minInterval: 60 }}
+													locale="fi"
+												/>
+											</Text>
+										</Text>
 									</View>
 								)
 							)}
