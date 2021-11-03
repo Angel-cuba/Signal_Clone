@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { ListItem, Avatar } from 'react-native-elements';
 import { db } from '../firebase/firebase';
 
 const CustomListItem = ({ id, chatName, enterChat }) => {
 	const [chatMessage, setChatMessage] = useState([]);
-	// console.log(chatMessage[0]);
+	// console.log(chatMessage);
 
 	useEffect(() => {
 		const unsubscribe = db
@@ -18,7 +19,6 @@ const CustomListItem = ({ id, chatName, enterChat }) => {
 		return unsubscribe;
 	}, []);
 
-	// console.log(id);
 	return (
 		<ListItem onPress={() => enterChat(id, chatName)} key={id} bottomDivider>
 			<Avatar
@@ -26,16 +26,28 @@ const CustomListItem = ({ id, chatName, enterChat }) => {
 				source={{
 					uri: chatMessage[0]
 						? chatMessage[0].photoURL
-						: 'https://cencup.com/wp-content/uploads/2019/07/avatar-placeholder.png',
+						: 'https://res.cloudinary.com/dqaerysgb/image/upload/v1635075942/border_heart.png',
 				}}
 			/>
+			{/* {console.log('----', chatName)} */}
 			<ListItem.Content>
-				<ListItem.Title style={{ textAlign: 'center', fontWeight: '900' }}>
-					{chatName}
+				<ListItem.Title
+					style={{
+						textAlign: 'center',
+						color: '#2c3e50',
+						fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+					}}
+				>
+					{chatName[0].toUpperCase() + chatName.slice(1, 20).toLowerCase()}
 				</ListItem.Title>
 				<ListItem.Subtitle numberOfLines={1} ellipsizeMode="tail">
 					{chatMessage[0] ? (
-						<Text style={{ backgroundColor: '#deebdd', fontWeight: '600' }}>
+						<Text
+							style={{
+								backgroundColor: '#deebdd',
+								fontWeight: Platform.OS === 'android' ? 'bold' : '600',
+							}}
+						>
 							{chatMessage[0].displayName}
 						</Text>
 					) : null}
@@ -49,4 +61,8 @@ const CustomListItem = ({ id, chatName, enterChat }) => {
 
 export default CustomListItem;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+	},
+});
