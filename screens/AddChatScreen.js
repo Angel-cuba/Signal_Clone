@@ -22,6 +22,7 @@ const AddChatScreen = ({ navigation }) => {
 		navigation.setOptions({
 			title: 'Add a new Chat',
 			headerBackTitle: 'Chats',
+			headerTitleAlign: 'center',
 		});
 	}, [navigation]);
 

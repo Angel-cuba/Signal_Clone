@@ -1,11 +1,10 @@
 import React, { useLayoutEffect, useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { Avatar } from 'react-native-elements';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomListItem from '../components/CustomListItem';
 import { firebase, db } from '../firebase/firebase';
-
-import { AntDesign, SimpleLineIcons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 
 const HomeScreen = ({ navigation }) => {
 	const [chats, setChats] = useState([]);
@@ -32,11 +31,14 @@ const HomeScreen = ({ navigation }) => {
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
-			title: 'Signal',
+			title: 'Chats',
 			headerTitleAlign: 'center',
-
-			headerStyle: { backgroundColor: 'lightgray' },
-			headerTitleStyle: { color: 'black' },
+			headerStyle: { backgroundColor: '#2C6BED' },
+			headerTitleStyle: {
+				color: '#dee',
+				fontWeight: Platform.OS === 'android' ? 'bold' : '800',
+				fontSize: 20,
+			},
 			headerTintColor: 'black',
 			headerLeft: () => (
 				<View style={{ marginLeft: 5 }}>
@@ -46,26 +48,64 @@ const HomeScreen = ({ navigation }) => {
 						style={{ flexDirection: 'row', alignItems: 'center' }}
 					>
 						<Avatar rounded source={{ uri: firebase.auth().currentUser.photoURL }} />
-						<Text>{firebase.auth().currentUser.displayName}</Text>
+						<Text
+							style={{ fontWeight: Platform.OS === 'android' ? 'bold' : '800', color: '#83eaf1' }}
+						>
+							{firebase.auth().currentUser.displayName}
+						</Text>
 					</TouchableOpacity>
 				</View>
 			),
 			headerRight: () => (
 				<View
 					style={{
-						marginRight: 20,
+						marginRight: Platform.isPad ? 50 : 10,
 						flexDirection: 'row',
 						justifyContent: 'space-between',
-						width: 80,
+						alignItems: 'center',
+						...Platform.select({
+							web: { marginRight: 50 },
+						}),
+						// width: 80,
+						//backgroundColor: 'red',
 					}}
 				>
-					<TouchableOpacity activeOpacity={0.5}>
+					{/* <TouchableOpacity activeOpacity={0.5}>
 						<AntDesign name="camerao" size={24} color="black" />
-					</TouchableOpacity>
+					</TouchableOpacity> */}
+					<Text
+						style={{
+							fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+							color: '#000',
+							position: 'absolute',
+							left: -14,
+							bottom: Platform.isPad ? 24 : 16,
+							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
+						}}
+					>
+						New
+					</Text>
 
 					<TouchableOpacity onPress={() => navigation.navigate('AddChat')} activeOpacity={0.5}>
-						<SimpleLineIcons name="pencil" size={24} color="black" />
+						<LottieView
+							style={{ height: Platform.isPad ? 60 : 50 }}
+							source={require('../assets/animations/8026-taking-notes.json')}
+							autoPlay
+							speed={0.5}
+						/>
 					</TouchableOpacity>
+					<Text
+						style={{
+							fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+							color: '#000',
+							position: 'absolute',
+							right: -14,
+							bottom: Platform.isPad ? 24 : 16,
+							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
+						}}
+					>
+						chat
+					</Text>
 				</View>
 			),
 		});
@@ -85,6 +125,15 @@ const HomeScreen = ({ navigation }) => {
 					<CustomListItem key={id} id={id} chatName={chatName} enterChat={enterChat} />
 				))}
 			</ScrollView>
+
+			<View style={styles.animation}>
+				<LottieView
+					style={{ height: 200 }}
+					source={require('../assets/animations/21333-writer.json')}
+					autoPlay
+					speed={2}
+				/>
+			</View>
 		</SafeAreaView>
 	);
 };
@@ -92,12 +141,12 @@ const HomeScreen = ({ navigation }) => {
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-	outButton: {
-		backgroundColor: 'gray',
-		color: 'black',
-		padding: '5px 15px',
-	},
 	scrollContainer: {
 		height: '100%',
+	},
+	animation: {
+		position: 'absolute',
+		bottom: 10,
+		left: 10,
 	},
 });

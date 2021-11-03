@@ -1,6 +1,5 @@
-import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, InteractionManager } from 'react-native';
+import { InteractionManager } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './screens/LoginScreen';
@@ -14,7 +13,7 @@ const Stack = createNativeStackNavigator();
 const globalScreenOptions = {
 	headerStyle: { backgroundColor: '#2C6BED' },
 	headerTitleStyle: { color: '#f5f7fa' },
-	headerTintColor: { color: 'silver' },
+	headerTintColor: { color: '#deebdd' },
 };
 
 export default function App() {
@@ -81,12 +80,3 @@ export default function App() {
 		</NavigationContainer>
 	);
 }
-
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		backgroundColor: '#fff',
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-});

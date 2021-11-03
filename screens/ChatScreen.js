@@ -10,6 +10,7 @@ import {
 	ScrollView,
 	Keyboard,
 	TouchableWithoutFeedback,
+	Platform,
 } from 'react-native';
 import { Avatar, Input } from 'react-native-elements';
 import { AntDesign, FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -36,12 +37,13 @@ const ChatScreen = ({ navigation, route }) => {
 					<Text
 						style={{
 							paddingLeft: 5,
-							fontWeight: '900',
+							fontWeight: Platform.OS === 'android' ? 'bold' : '900',
 							fontSize: 21,
-							color: 'silver',
+							color: Platform.OS === 'android' ? '#deebdd' : '#f5f7fa',
 						}}
 					>
-						{route.params.chatName}
+						{route.params.chatName[0].toUpperCase() +
+							route.params.chatName.slice(1, 20).toLowerCase()}
 					</Text>
 				</View>
 			),
@@ -104,7 +106,6 @@ const ChatScreen = ({ navigation, route }) => {
 				style={styles.keyboard}
 				keyboardVerticalOffset={90}
 			>
-				{/* onPress={Keyboard.dismiss()}> */}
 				<TouchableWithoutFeedback>
 					<>
 						<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
@@ -126,17 +127,15 @@ const ChatScreen = ({ navigation, route }) => {
 											}}
 											right={-5}
 											top={-15}
-											size={30}
+											size={28}
 										/>
-										<Text style={styles.recieverText}>
-											{data.message}
-											<Text>
-												<TimeAgo
-													time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
-													opts={{ minInterval: 60 }}
-													locale="fi"
-												/>
-											</Text>
+										<Text style={styles.recieverText}>{data.message}</Text>
+										<Text style={styles.recieverTimeago}>
+											<TimeAgo
+												time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
+												opts={{ minInterval: 60 }}
+												locale="fi"
+											/>
 										</Text>
 									</View>
 								) : (
@@ -152,19 +151,15 @@ const ChatScreen = ({ navigation, route }) => {
 											}}
 											left={-5}
 											top={-15}
-											size={30}
+											size={28}
 										/>
-										<Text style={styles.senderText}>
-											{data.message}
-
-											{/* <Text>{data.timestamp ? moment().fromNow() : '...'}</Text> */}
-											<Text>
-												<TimeAgo
-													time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
-													opts={{ minInterval: 60 }}
-													locale="fi"
-												/>
-											</Text>
+										<Text style={styles.senderText}>{data.message}</Text>
+										<Text style={styles.senderTimeago}>
+											<TimeAgo
+												time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
+												opts={{ minInterval: 60 }}
+												locale="fi"
+											/>
 										</Text>
 									</View>
 								)
@@ -178,83 +173,113 @@ const ChatScreen = ({ navigation, route }) => {
 								onSubmitEditing={sendMessage}
 								style={styles.textInput}
 							/>
-							<TouchableOpacity style={{ marginBottom: 40 }} onPress={sendMessage} opacity={0.5}>
-								<Ionicons name="send" size={42} color="navy" />
+							<TouchableOpacity
+								style={{
+									width: 60,
+									// backgroundColor: 'green',
+									position: 'absolute',
+									top: 6,
+									right: 0,
+								}}
+								onPress={sendMessage}
+								opacity={0.5}
+							>
+								<Ionicons name="send" size={Platform.isPad ? 45 : 40} color="navy" />
 							</TouchableOpacity>
 						</View>
 					</>
 				</TouchableWithoutFeedback>
 			</KeyboardAvoidingView>
-			{/* <Text>{route.params.chatName}</Text> */}
 		</SafeAreaView>
 	);
 };
-
+// //#e7d6e3
 export default ChatScreen;
 
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		// backgroundColor: 'red',
-		// height: '100%',
 	},
 	keyboard: {
 		flex: 1,
+		...Platform.select({
+			ios: { backgroundColor: '#deebdd' },
+			android: { backgroundColor: '#d3d3d3' },
+			default: { backgroundColor: '#7f8c8d' },
+		}),
 	},
 	footer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		width: '90%',
-		padding: 15,
+		width: '100%',
+		paddingTop: 15,
+		paddingRight: 55,
+		paddingBottom: Platform.OS === 'android' ? 1 : 0,
+		// 	paddingBottom: 15,
+		backgroundColor: 'rgba(0,0,0,.111)',
 	},
 	textInput: {
 		bottom: 10,
 		height: 50,
-		width: '90%',
+		width: '100%',
 		flex: 1,
 		marginRight: 15,
 		borderColor: 'transparent',
-		backgroundColor: '#ECECEC',
-		// borderWidth: 1,
+		backgroundColor: '#bdd4e7',
 		padding: 10,
 		color: 'gray',
 		borderRadius: 30,
 	},
 	recieverText: {
-		color: 'red',
-		fontWeight: '500',
-		marginLeft: 10,
+		fontSize: 16,
+		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+		// color: Platform.OS === 'android' ? '#d3d3d3' : '#b0f3f1',
+		marginLeft: 2,
+		...Platform.select({
+			ios: { color: '#b0f3f1' },
+			android: { color: '#d3d3d3' },
+			default: { color: '#7f8c8d' },
+		}),
 	},
 	recierver: {
 		padding: 15,
-		backgroundColor: '#ECECEC',
+		backgroundColor: '#2a2a72',
 		alignSelf: 'flex-end',
-		borderRadius: 20,
+		borderTopLeftRadius: 10,
+		borderBottomLeftRadius: 6,
+		borderBottomRightRadius: 4,
 		marginRight: 20,
-		marginBottom: 20,
+		marginBottom: 28,
 		maxWidth: '80%',
 		position: 'relative',
 	},
-	senderText: {
-		color: 'black',
-		fontWeight: '500',
-		marginLeft: 12,
-		marginBottom: 15,
+	recieverTimeago: {
+		position: 'absolute',
+		bottom: -14,
+		right: 16,
+		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+		fontSize: 12,
 	},
-	senderNameText: {
-		left: 10,
-		paddingRight: 10,
-		fontSize: 10,
-		color: 'white',
+	senderText: {
+		color: Platform.OS === 'android' ? '#030202' : '#000c14',
+		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+		fontSize: 16,
 	},
 	sender: {
 		padding: 15,
-		backgroundColor: 'lightblue',
+		backgroundColor: '#8693ab',
 		alignSelf: 'flex-start',
-		borderRadius: 20,
-		marginRight: 20,
-		marginBottom: 20,
+		borderRadius: 10,
+		marginLeft: 20,
+		marginBottom: 28,
 		maxWidth: '80%',
 		position: 'relative',
+	},
+	senderTimeago: {
+		position: 'absolute',
+		bottom: -14,
+		left: 16,
+		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+		fontSize: 12,
 	},
 });
