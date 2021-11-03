@@ -1,12 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Alert } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Alert, TouchableOpacity } from 'react-native';
 import { Button, Input, Image } from 'react-native-elements';
 import { firebase } from '../firebase/firebase';
+import { AntDesign, Feather } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
 
 	useEffect(() => {
 		const unsubscribe = firebase.auth().onAuthStateChanged((authUser) => {
@@ -56,10 +58,19 @@ const LoginScreen = ({ navigation }) => {
 				/>
 				<Input
 					placeholder="Password"
-					secureTextEntry
+					secureTextEntry={!showPassword}
 					type="password"
 					value={password}
 					onChangeText={(text) => setPassword(text)}
+					rightIcon={
+						<TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+							{showPassword ? (
+								<AntDesign name="eye" size={24} color="black" />
+							) : (
+								<Feather name="eye-off" size={24} color="black" />
+							)}
+						</TouchableOpacity>
+					}
 				/>
 			</View>
 			<Button containerStyle={styles.button} onPress={SignIn} title="Login" />
