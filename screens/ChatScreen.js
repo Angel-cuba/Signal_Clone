@@ -18,6 +18,7 @@ import { db, firebase } from '../firebase/firebase';
 import TimeAgo from 'react-native-timeago';
 
 const ChatScreen = ({ navigation, route }) => {
+	// console.log('ChatScreen---------', route.params);
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState([]);
 	useLayoutEffect(() => {
@@ -30,7 +31,9 @@ const ChatScreen = ({ navigation, route }) => {
 				<View style={{ flexDirection: 'row', alignItems: 'center' }}>
 					<Avatar
 						source={{
-							uri: 'https://res.cloudinary.com/dqaerysgb/image/upload/v1632245932/paris_mulhc4.jpg',
+							uri: route.params
+								? route.params.image
+								: 'https://res.cloudinary.com/dqaerysgb/image/upload/v1632245932/paris_mulhc4.jpg',
 						}}
 						rounded
 					/>
@@ -104,91 +107,92 @@ const ChatScreen = ({ navigation, route }) => {
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={styles.keyboard}
-				keyboardVerticalOffset={90}
+				keyboardVerticalOffset={Platform.select({ ios: 0, android: 80 })}
 			>
-				<TouchableWithoutFeedback>
-					<>
-						<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
-							{messages.map(({ id, data }) =>
-								// console.log(data.message);
-								// console.log(data.email);
-								// console.log(firebase.auth().currentUser.email);
-								data.email === firebase.auth().currentUser.email ? (
-									<View key={id} style={styles.recierver}>
-										<Avatar
-											source={{ uri: data.photoURL }}
-											position="absolute"
-											rounded
-											// WEB
-											containerStyle={{
-												position: 'absolute',
-												right: -5,
-												top: -15,
-											}}
-											right={-5}
-											top={-15}
-											size={28}
+				{/* <TouchableWithoutFeedback> */}
+				<>
+					<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
+						{messages.map(({ id, data }) =>
+							// console.log(data.message);
+							// console.log(data.email);
+							// console.log(firebase.auth().currentUser.email);
+							data.email === firebase.auth().currentUser.email ? (
+								<View key={id} style={styles.recierver}>
+									<Avatar
+										source={{ uri: data.photoURL }}
+										position="absolute"
+										rounded
+										// WEB
+										containerStyle={{
+											position: 'absolute',
+											right: -5,
+											top: -15,
+										}}
+										right={-5}
+										top={-15}
+										size={28}
+									/>
+									<Text style={styles.recieverText}>{data.message}</Text>
+									<Text style={styles.recieverTimeago}>
+										<TimeAgo
+											time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
+											opts={{ minInterval: 60 }}
+											locale="fi"
 										/>
-										<Text style={styles.recieverText}>{data.message}</Text>
-										<Text style={styles.recieverTimeago}>
-											<TimeAgo
-												time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
-												opts={{ minInterval: 60 }}
-												locale="fi"
-											/>
-										</Text>
-									</View>
-								) : (
-									<View key={id} style={styles.sender}>
-										<Avatar
-											source={{ uri: data.photoURL }}
-											position="absolute"
-											rounded
-											containerStyle={{
-												position: 'absolute',
-												top: -15,
-												left: -5,
-											}}
-											left={-5}
-											top={-15}
-											size={28}
+									</Text>
+								</View>
+							) : (
+								<View key={id} style={styles.sender}>
+									<Avatar
+										source={{ uri: data.photoURL }}
+										position="absolute"
+										rounded
+										containerStyle={{
+											position: 'absolute',
+											top: -15,
+											left: -5,
+										}}
+										left={-5}
+										top={-15}
+										size={28}
+									/>
+									<Text style={styles.senderText}>{data.message}</Text>
+									<Text style={styles.senderTimeago}>
+										<TimeAgo
+											time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
+											opts={{ minInterval: 60 }}
+											locale="fi"
 										/>
-										<Text style={styles.senderText}>{data.message}</Text>
-										<Text style={styles.senderTimeago}>
-											<TimeAgo
-												time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
-												opts={{ minInterval: 60 }}
-												locale="fi"
-											/>
-										</Text>
-									</View>
-								)
-							)}
-						</ScrollView>
-						<View style={styles.footer}>
-							<Input
-								placeholder="Signal message"
-								value={input}
-								onChangeText={(text) => setInput(text)}
-								onSubmitEditing={sendMessage}
-								style={styles.textInput}
-							/>
-							<TouchableOpacity
-								style={{
-									width: 60,
-									// backgroundColor: 'green',
-									position: 'absolute',
-									top: 6,
-									right: 0,
-								}}
-								onPress={sendMessage}
-								opacity={0.5}
-							>
-								<Ionicons name="send" size={Platform.isPad ? 45 : 40} color="navy" />
-							</TouchableOpacity>
-						</View>
-					</>
-				</TouchableWithoutFeedback>
+									</Text>
+								</View>
+							)
+						)}
+					</ScrollView>
+					<View style={styles.footer}>
+						<Input
+							placeholder="Signal message"
+							value={input}
+							onChangeText={(text) => setInput(text)}
+							onSubmitEditing={sendMessage}
+							style={styles.textInput}
+							underlineColorAndroid="transparent"
+						/>
+						<TouchableOpacity
+							style={{
+								width: 60,
+								// backgroundColor: 'green',
+								position: 'absolute',
+								top: 6,
+								right: 0,
+							}}
+							onPress={sendMessage}
+							opacity={0.5}
+						>
+							<Ionicons name="send" size={Platform.isPad ? 45 : 40} color="navy" />
+						</TouchableOpacity>
+					</View>
+				</>
+				{/* </TouchableWithoutFeedback> */}
 			</KeyboardAvoidingView>
 		</SafeAreaView>
 	);

@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import { ListItem, Avatar } from 'react-native-elements';
-import { db } from '../firebase/firebase';
+import { db, firebase } from '../firebase/firebase';
+import LottieView from 'lottie-react-native';
+import { AntDesign } from '@expo/vector-icons';
+import { TouchableOpacity } from 'react-native';
 
-const CustomListItem = ({ id, chatName, enterChat }) => {
+const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
+	// console.log('CustomListItem', chatName);
+	// console.log('aaaaaaaaaaaaaaa--', image);
+
 	const [chatMessage, setChatMessage] = useState([]);
 	// console.log(chatMessage);
 
@@ -18,17 +24,29 @@ const CustomListItem = ({ id, chatName, enterChat }) => {
 
 		return unsubscribe;
 	}, []);
+	const currentUser = firebase.auth().currentUser.uid;
+	// console.log('-----------', currentUser);
+	// console.log('-----checking----', db.collection('chat').doc(id));
 
 	return (
-		<ListItem onPress={() => enterChat(id, chatName)} key={id} bottomDivider>
-			<Avatar
-				rounded
-				source={{
-					uri: chatMessage[0]
-						? chatMessage[0].photoURL
-						: 'https://res.cloudinary.com/dqaerysgb/image/upload/v1635075942/border_heart.png',
-				}}
-			/>
+		<ListItem onPress={() => enterChat(id, chatName, image, userId)} key={id} bottomDivider>
+			{chatMessage[0] ? (
+				<Avatar
+					rounded
+					source={{
+						uri: chatMessage[0].photoURL,
+						// : 'https://res.cloudinary.com/dqaerysgb/image/upload/v1635075942/border_heart.png',
+					}}
+				/>
+			) : (
+				<LottieView
+					style={{ height: 30 }}
+					source={require('../assets/animations/21333-writer.json')}
+					autoPlay
+					speed={2}
+				/>
+			)}
+
 			{/* {console.log('----', chatName)} */}
 			<ListItem.Content>
 				<ListItem.Title
@@ -55,6 +73,11 @@ const CustomListItem = ({ id, chatName, enterChat }) => {
 					{chatMessage[0] ? chatMessage[0].message : null}
 				</ListItem.Subtitle>
 			</ListItem.Content>
+			{currentUser === userId && (
+				<TouchableOpacity>
+					<AntDesign name="delete" size={24} color="red" />
+				</TouchableOpacity>
+			)}
 		</ListItem>
 	);
 };

@@ -1,5 +1,13 @@
 import React, { useLayoutEffect, useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import {
+	ScrollView,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+	Platform,
+	Dimensions,
+} from 'react-native';
 import { Avatar } from 'react-native-elements';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomListItem from '../components/CustomListItem';
@@ -8,6 +16,9 @@ import LottieView from 'lottie-react-native';
 
 const HomeScreen = ({ navigation }) => {
 	const [chats, setChats] = useState([]);
+	console.log(chats.length);
+	// console.log('chats from Homescreen', chats);
+	// console.log('images', chats.data.image);
 
 	const signOutUser = () => {
 		firebase
@@ -25,7 +36,6 @@ const HomeScreen = ({ navigation }) => {
 				}))
 			)
 		);
-
 		return unsubscribe;
 	}, []);
 
@@ -111,24 +121,33 @@ const HomeScreen = ({ navigation }) => {
 		});
 	}, [navigation]);
 
-	const enterChat = (id, chatName) => {
+	const enterChat = (id, chatName, image, userId) => {
 		navigation.navigate('Chat', {
 			id,
 			chatName,
+			image,
+			userId,
 		});
 	};
 
 	return (
 		<SafeAreaView>
 			<ScrollView style={styles.scrollContainer}>
-				{chats.map(({ id, data: { chatName } }) => (
-					<CustomListItem key={id} id={id} chatName={chatName} enterChat={enterChat} />
+				{chats.map(({ id, data: { chatName, image, userId } }) => (
+					<CustomListItem
+						key={id}
+						id={id}
+						chatName={chatName}
+						image={image}
+						userId={userId}
+						enterChat={enterChat}
+					/>
 				))}
 			</ScrollView>
 
 			<View style={styles.animation}>
 				<LottieView
-					style={{ height: 200 }}
+					style={{ height: chats.length > 7 ? 180 : 200 }}
 					source={require('../assets/animations/21333-writer.json')}
 					autoPlay
 					speed={2}
@@ -143,6 +162,8 @@ export default HomeScreen;
 const styles = StyleSheet.create({
 	scrollContainer: {
 		height: '100%',
+		width: Dimensions.get('window').width,
+		// backgroundColor: 'blue',
 	},
 	animation: {
 		position: 'absolute',
