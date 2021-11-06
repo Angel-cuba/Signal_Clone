@@ -8,7 +8,7 @@ import {
 	Platform,
 	Dimensions,
 } from 'react-native';
-import { Avatar } from 'react-native-elements';
+import { Avatar, ListItem } from 'react-native-elements';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomListItem from '../components/CustomListItem';
 import { firebase, db } from '../firebase/firebase';
@@ -16,7 +16,8 @@ import LottieView from 'lottie-react-native';
 
 const HomeScreen = ({ navigation }) => {
 	const [chats, setChats] = useState([]);
-	console.log(chats.length);
+	const [loading, setLoading] = useState(false);
+	// console.log(chats.length);
 	// console.log('chats from Homescreen', chats);
 	// console.log('images', chats.data.image);
 
@@ -28,6 +29,7 @@ const HomeScreen = ({ navigation }) => {
 	};
 
 	useEffect(() => {
+		setLoading(true);
 		const unsubscribe = db.collection('chat').onSnapshot((snapshot) =>
 			setChats(
 				snapshot.docs.map((doc) => ({
@@ -36,6 +38,11 @@ const HomeScreen = ({ navigation }) => {
 				}))
 			)
 		);
+		if (chats) {
+			setTimeout(() => {
+				setLoading(false);
+			}, 2000);
+		}
 		return unsubscribe;
 	}, []);
 
@@ -76,13 +83,8 @@ const HomeScreen = ({ navigation }) => {
 						...Platform.select({
 							web: { marginRight: 50 },
 						}),
-						// width: 80,
-						//backgroundColor: 'red',
 					}}
 				>
-					{/* <TouchableOpacity activeOpacity={0.5}>
-						<AntDesign name="camerao" size={24} color="black" />
-					</TouchableOpacity> */}
 					<Text
 						style={{
 							fontWeight: Platform.OS === 'android' ? 'bold' : '700',
@@ -129,25 +131,42 @@ const HomeScreen = ({ navigation }) => {
 			userId,
 		});
 	};
+	const LoadingView = ({ id }) => (
+		<ListItem key={id} style={{ backgroundColor: '#deebdd' }}>
+			<LottieView
+				source={require('../assets/animations/9329-loading.json')}
+				style={{ height: 100 }}
+				autoPlay={true}
+				loop={true}
+				speed={2}
+			/>
+		</ListItem>
+	);
 
 	return (
 		<SafeAreaView>
 			<ScrollView style={styles.scrollContainer}>
 				{chats.map(({ id, data: { chatName, image, userId } }) => (
-					<CustomListItem
-						key={id}
-						id={id}
-						chatName={chatName}
-						image={image}
-						userId={userId}
-						enterChat={enterChat}
-					/>
+					<View key={id}>
+						{loading ? (
+							<LoadingView key={id} id={id} />
+						) : (
+							<CustomListItem
+								key={id}
+								id={id}
+								chatName={chatName}
+								image={image}
+								userId={userId}
+								enterChat={enterChat}
+							/>
+						)}
+					</View>
 				))}
 			</ScrollView>
 
 			<View style={styles.animation}>
 				<LottieView
-					style={{ height: chats.length > 7 ? 180 : 200 }}
+					style={{ height: chats.length > 7 ? 100 : 200 }}
 					source={require('../assets/animations/21333-writer.json')}
 					autoPlay
 					speed={2}
