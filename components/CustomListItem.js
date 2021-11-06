@@ -12,7 +12,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 	// console.log('aaaaaaaaaaaaaaa--', image);
 
 	const [chatMessage, setChatMessage] = useState([]);
-	// console.log(chatMessage);
+	// console.log(chatMessage[0].length);
 
 	useEffect(() => {
 		const unsubscribe = db
@@ -28,7 +28,17 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 	// console.log('-----------', currentUser);
 	// console.log('-----checking----', db.collection('chat').doc(id));
 
+	const deleteChatRoom = () => {
+		db.collection('chat')
+			.doc(id)
+			.delete()
+			.then(() => console.log('Deleted'))
+			.catch((error) => console.error('Failed to delete:' + error));
+	};
+
 	return (
+		// <>
+		// 	{chatMessage[0] ? (
 		<ListItem onPress={() => enterChat(id, chatName, image, userId)} key={id} bottomDivider>
 			{chatMessage[0] ? (
 				<Avatar
@@ -74,11 +84,17 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 				</ListItem.Subtitle>
 			</ListItem.Content>
 			{currentUser === userId && (
-				<TouchableOpacity>
-					<AntDesign name="delete" size={24} color="red" />
+				<TouchableOpacity style={styles.delete} onPress={deleteChatRoom}>
+					<AntDesign name="delete" size={30} color="red" />
 				</TouchableOpacity>
 			)}
 		</ListItem>
+		// 	) : (
+		// 		<>
+		// 			<Text>No hay nada</Text>
+		// 		</>
+		// 	)}
+		// </>
 	);
 };
 
@@ -87,5 +103,8 @@ export default CustomListItem;
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	delete: {
+		marginRight: 20,
 	},
 });
