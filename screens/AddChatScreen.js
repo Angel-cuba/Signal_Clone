@@ -24,7 +24,7 @@ const AddChatScreen = ({ navigation }) => {
 			.then(() => {
 				setTimeout(() => {
 					setLoading(false);
-					navigation.goBack();
+					navigation.navigate('Home');
 				}, 2500);
 			})
 			.catch((error) => Alert.alert(error.message));
@@ -33,7 +33,8 @@ const AddChatScreen = ({ navigation }) => {
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: 'Add a new Chat',
-			headerBackTitle: 'Chats',
+			// headerBackTitle: 'Chats',
+			// headerTintColor: { color: 'red' },
 			headerTitleAlign: 'center',
 		});
 	}, [navigation]);
@@ -62,6 +63,11 @@ const AddChatScreen = ({ navigation }) => {
 	const uploadPictureFromPhone = async () => {
 		if (Platform.OS !== 'web') {
 			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+			if (status.cancelled) {
+				Alert.alert('Has cancelled permissions', [
+					{ text: 'Give permissions and continue', style: 'cancel' },
+				]);
+			}
 			if (status !== 'granted') {
 				Alert.alert('You have to authorize permissions', [{ text: 'Ok....💥', style: 'cancel' }]);
 				return;
@@ -133,7 +139,7 @@ const AddChatScreen = ({ navigation }) => {
 						// icon={<Icon name="cellphone-arrow-down" size={24} color="black" />}
 						icon={
 							<LottieView
-								style={{ height: 30 }}
+								style={{ height: 29 }}
 								source={require('../assets/animations/45759-phone-icon.json')}
 								autoPlay
 								speed={0.793}
@@ -174,7 +180,8 @@ const styles = StyleSheet.create({
 		marginVertical: 10,
 		flexDirection: 'row',
 		justifyContent: 'space-between',
-		width: 200,
+		width: 250,
+		// backgroundColor: 'red',
 	},
 	buttonsBroupMarginTop: (chatImage = '') => ({
 		marginTop: chatImage === '' && 30,
