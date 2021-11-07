@@ -27,9 +27,22 @@ const HomeScreen = ({ navigation }) => {
 			.signOut()
 			.then(() => navigation.replace('Login'));
 	};
+	const timerUserSignOut = () => {
+		if (firebase.auth().currentUser) {
+			setTimeout(() => {
+				firebase
+					.auth()
+					.signOut()
+					.then(() => navigation.replace('Login'));
+			}, 3600000);
+		}
+	};
 
 	useEffect(() => {
 		setLoading(true);
+
+		timerUserSignOut();
+
 		const unsubscribe = db.collection('chat').onSnapshot((snapshot) =>
 			setChats(
 				snapshot.docs.map((doc) => ({
