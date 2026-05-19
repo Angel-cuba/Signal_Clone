@@ -83,13 +83,13 @@ const HomeScreen = ({ navigation }) => {
 		navigation.setOptions({
 			title: 'Chats',
 			headerTitleAlign: 'center',
-			headerStyle: { backgroundColor: '#2C6BED' },
+			headerStyle: { backgroundColor: colors.primary },
 			headerTitleStyle: {
-				color: '#dee',
+				color: colors.headerTitle,
 				fontWeight: Platform.OS === 'android' ? 'bold' : '800',
 				fontSize: 20,
 			},
-			headerTintColor: 'black',
+			headerTintColor: colors.headerTitle,
 			headerLeft: () => (
 				<View style={{ marginLeft: 5 }}>
 					<TouchableOpacity
@@ -99,7 +99,7 @@ const HomeScreen = ({ navigation }) => {
 					>
 						<Avatar rounded source={{ uri: auth.currentUser?.photoURL }} />
 						<Text
-							style={{ fontWeight: Platform.OS === 'android' ? 'bold' : '800', color: '#83eaf1' }}
+							style={{ fontWeight: Platform.OS === 'android' ? 'bold' : '800', color: colors.sentText }}
 						>
 							{auth.currentUser?.displayName}
 						</Text>
@@ -121,7 +121,7 @@ const HomeScreen = ({ navigation }) => {
 					<Text
 						style={{
 							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
-							color: '#000',
+							color: colors.headerTitle,
 							position: 'absolute',
 							left: -14,
 							bottom: Platform.isPad ? 24 : 16,
@@ -141,7 +141,7 @@ const HomeScreen = ({ navigation }) => {
 					<Text
 						style={{
 							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
-							color: '#000',
+							color: colors.headerTitle,
 							position: 'absolute',
 							right: -14,
 							bottom: Platform.isPad ? 24 : 16,
@@ -152,7 +152,7 @@ const HomeScreen = ({ navigation }) => {
 				</View>
 			),
 		});
-	}, [navigation]);
+	}, [navigation, colors]);
 
 	const enterChat = (id, chatName, image, userId) => {
 		navigation.navigate('Chat', {

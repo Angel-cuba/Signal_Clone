@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Image, Alert } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { Button, Input } from '@rneui/themed';
@@ -19,6 +19,10 @@ const RegisterScreen = ({ navigation }) => {
 	const [localImageUri, setLocalImageUri] = useState('');
 	const [loading, setLoading] = useState(false);
 	const { colors, isDark } = useTheme();
+	// Guard: prevents setLoading(false) on an unmounted component if the user
+	// navigates back mid-registration (same pattern as LoginScreen)
+	const isMountedRef = useRef(true);
+	useEffect(() => () => { isMountedRef.current = false; }, []);
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
@@ -60,7 +64,7 @@ const RegisterScreen = ({ navigation }) => {
 				{ text: 'OK', style: 'cancel' },
 			]);
 		} finally {
-			setLoading(false);
+			if (isMountedRef.current) setLoading(false);
 		}
 	};
 

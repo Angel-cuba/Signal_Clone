@@ -72,59 +72,63 @@ const AddChatScreen = ({ navigation }) => {
 	};
 
 	return (
-		<>
-			<View style={[styles.container, { backgroundColor: colors.background }]}>
-				<Input
-					placeholder="Chat name"
-					value={chatName}
-					onChangeText={setChatName}
-					maxLength={50}
-					leftIcon={<Icon name="wechat" size={24} color={colors.text} />}
-				/>
+		// Single View root (no fragment) so the absolute-positioned loading overlay
+		// has a reliable flex:1 containing block on both iOS and Android
+		<View style={[styles.container, { backgroundColor: colors.background }]}>
+			<Input
+				placeholder="Chat name"
+				value={chatName}
+				onChangeText={setChatName}
+				maxLength={50}
+				disabled={loading}
+				leftIcon={<Icon name="wechat" size={24} color={colors.text} />}
+			/>
 
-				{localImageUri !== '' ? (
-					<View style={styles.imagePreview}>
-						<Image source={{ uri: localImageUri }} style={{ width: 160, height: 160, borderRadius: 12 }} />
-					</View>
-				) : (
-					<Text style={[styles.text, { color: colors.helperText }]}>Add a chat image (optional)</Text>
-				)}
-
-				<View style={styles.buttonsGroup}>
-					<Button
-						icon={
-							<LottieView
-								style={{ height: 30 }}
-								source={require('../assets/animations/9948-camera-pop-up.json')}
-								autoPlay
-								speed={0.8}
-							/>
-						}
-						onPress={handlePickCamera}
-						title="Camera"
-					/>
-					<Button
-						raised
-						onPress={handlePickGallery}
-						icon={
-							<LottieView
-								style={{ height: 29 }}
-								source={require('../assets/animations/45759-phone-icon.json')}
-								autoPlay
-								speed={0.793}
-							/>
-						}
-						title="Gallery"
-					/>
+			{localImageUri !== '' ? (
+				<View style={styles.imagePreview}>
+					<Image source={{ uri: localImageUri }} style={{ width: 160, height: 160, borderRadius: 12 }} />
 				</View>
+			) : (
+				<Text style={[styles.text, { color: colors.helperText }]}>Add a chat image (optional)</Text>
+			)}
 
+			<View style={styles.buttonsGroup}>
 				<Button
-					onPress={createChat}
-					disabled={!chatName.trim() || loading}
-					title={loading ? 'Creating...' : 'Create chat'}
-					containerStyle={styles.createButton}
+					icon={
+						<LottieView
+							style={{ height: 30 }}
+							source={require('../assets/animations/9948-camera-pop-up.json')}
+							autoPlay
+							speed={0.8}
+						/>
+					}
+					onPress={handlePickCamera}
+					disabled={loading}
+					title="Camera"
+				/>
+				<Button
+					raised
+					onPress={handlePickGallery}
+					disabled={loading}
+					icon={
+						<LottieView
+							style={{ height: 29 }}
+							source={require('../assets/animations/45759-phone-icon.json')}
+							autoPlay
+							speed={0.793}
+						/>
+					}
+					title="Gallery"
 				/>
 			</View>
+
+			<Button
+				onPress={createChat}
+				disabled={!chatName.trim() || loading}
+				title={loading ? 'Creating...' : 'Create chat'}
+				containerStyle={styles.createButton}
+			/>
+
 			{loading && (
 				<View style={styles.loadingScreen}>
 					<LottieView
@@ -135,7 +139,7 @@ const AddChatScreen = ({ navigation }) => {
 					/>
 				</View>
 			)}
-		</>
+		</View>
 	);
 };
 
