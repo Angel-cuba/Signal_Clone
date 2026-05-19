@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useLayoutEffect, useState } from 'react';
 import {
+	Alert,
 	StyleSheet,
 	Text,
 	View,
@@ -14,7 +15,7 @@ import {
 import { Avatar, Input } from '@rneui/themed';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase/firebase';
-import { collection, doc, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { timeAgo } from '../utils/timeago';
 
 const ChatScreen = ({ navigation, route }) => {
@@ -85,21 +86,28 @@ const ChatScreen = ({ navigation, route }) => {
 		return unsubscribe;
 	}, [route]);
 
-	const sendMessage = () => {
+	const sendMessage = async () => {
 		const trimmed = input.trim();
 		if (!trimmed) return;
 
-		Keyboard.dismiss();
-
 		const currentUser = auth.currentUser;
-		addDoc(collection(db, 'chat', route.params.id, 'messages'), {
-			timestamp: serverTimestamp(),
-			message: trimmed,
-			displayName: currentUser.displayName,
-			email: currentUser.email,
-			photoURL: currentUser.photoURL,
-		});
-		setInput('');
+		if (!currentUser) return; // guard against race with sign-out
+
+		Keyboard.dismiss();
+		setInput(''); // optimistic clear
+
+		try {
+			await addDoc(collection(db, 'chat', route.params.id, 'messages'), {
+				timestamp: serverTimestamp(),
+				message: trimmed,
+				displayName: currentUser.displayName,
+				email: currentUser.email,
+				photoURL: currentUser.photoURL,
+			});
+		} catch (error) {
+			setInput(trimmed); // restore so user can retry
+			Alert.alert('Send failed', 'Your message could not be sent. Please try again.');
+		}
 	};
 
 	return (

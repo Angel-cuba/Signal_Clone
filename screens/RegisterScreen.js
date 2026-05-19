@@ -112,11 +112,13 @@ const RegisterScreen = ({ navigation }) => {
 					<Button
 						icon={<Icon name="camera" size={22} color="black" />}
 						onPress={handlePickCamera}
+						disabled={loading}
 						title="Camera"
 					/>
 					<Button
 						raised
 						onPress={handlePickGallery}
+						disabled={loading}
 						icon={<Icon name="cellphone-arrow-down" size={22} color="black" />}
 						title="Gallery"
 					/>

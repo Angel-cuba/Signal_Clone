@@ -158,11 +158,9 @@ const HomeScreen = ({ navigation }) => {
 	return (
 		<SafeAreaView>
 			<ScrollView style={styles.scrollContainer}>
-				{chats.map(({ id, data: { chatName, image, userId } }) => (
-					<View key={id}>
-						{loading ? (
-							<LoadingView key={id} id={id} />
-						) : (
+				{loading
+					? [1, 2, 3].map((i) => <LoadingView key={i} id={i} />)
+					: chats.map(({ id, data: { chatName, image, userId } }) => (
 							<CustomListItem
 								key={id}
 								id={id}
@@ -171,9 +169,7 @@ const HomeScreen = ({ navigation }) => {
 								userId={userId}
 								enterChat={enterChat}
 							/>
-						)}
-					</View>
-				))}
+					  ))}
 			</ScrollView>
 
 			<View style={styles.animation}>

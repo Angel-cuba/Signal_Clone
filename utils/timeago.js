@@ -10,6 +10,6 @@ dayjs.extend(relativeTime);
  * @returns {string}
  */
 export const timeAgo = (seconds) => {
-  if (!seconds) return '';
+  if (seconds == null) return ''; // explicit null/undefined check — 0 is a valid timestamp
   return dayjs.unix(seconds).fromNow();
 };

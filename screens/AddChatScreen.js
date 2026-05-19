@@ -44,7 +44,7 @@ const AddChatScreen = ({ navigation }) => {
 				userId: auth.currentUser.uid,
 			});
 
-			navigation.navigate('Home');
+			navigation.goBack();
 		} catch (error) {
 			Alert.alert('Could not create chat', error.message);
 		} finally {

@@ -1,26 +1,17 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Platform } from 'react-native';
 
+// expo-image-picker 16+ uses string literal 'images' instead of deprecated MediaTypeOptions enum
 const PICKER_OPTIONS = {
-  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+  mediaTypes: ['images'],
   allowsEditing: true,
   aspect: [1, 1],
   quality: 0.7,
 };
 
-/**
- * Abstrae el resultado de expo-image-picker para compatibilidad entre SDK versions.
- * SDK 42:  result.cancelled / result.uri
- * SDK 44+: result.canceled  / result.assets[0].uri
- */
-const getPickedUri = (result) => {
-  // SDK 44+ shape
-  if ('canceled' in result) {
-    return result.canceled ? null : result.assets?.[0]?.uri ?? null;
-  }
-  // SDK 42 shape (expo-image-picker <13)
-  return result.cancelled ? null : result.uri ?? null;
-};
+// SDK 16+ always returns { canceled, assets } shape
+const getPickedUri = (result) =>
+  result.canceled ? null : result.assets?.[0]?.uri ?? null;
 
 /**
  * Abre la cámara y devuelve la URI local de la imagen, o null si se cancela/deniega.

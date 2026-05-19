@@ -3,7 +3,7 @@ import { Alert, Platform, StyleSheet, Text, TouchableOpacity } from 'react-nativ
 import { ListItem, Avatar } from '@rneui/themed';
 import { auth, db } from '../firebase/firebase';
 import {
-	collection, doc, query, orderBy, onSnapshot,
+	collection, doc, query, orderBy, limit, onSnapshot,
 	getDocs, writeBatch, deleteDoc,
 } from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
@@ -14,7 +14,8 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 
 	useEffect(() => {
 		const messagesRef = collection(db, 'chat', id, 'messages');
-		const q = query(messagesRef, orderBy('timestamp', 'desc'));
+		// limit(1): solo necesitamos el último mensaje para el preview — reduce lecturas de Firestore
+		const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
 		const unsubscribe = onSnapshot(q, (snapshot) =>
 			setChatMessage(snapshot.docs.map((doc) => doc.data()))
 		);
