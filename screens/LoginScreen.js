@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, KeyboardAvoidingView, Alert, TouchableOpacity } from 'react-native';
 import { Button, Input, Image } from '@rneui/themed';
 import { auth } from '../firebase/firebase';
@@ -13,6 +13,9 @@ const LoginScreen = ({ navigation }) => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const { colors, isDark } = useTheme();
+	// Guard: prevents setLoading(false) from firing after navigation unmounts this screen
+	const isMountedRef = useRef(true);
+	useEffect(() => () => { isMountedRef.current = false; }, []);
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (authUser) => {
@@ -35,7 +38,7 @@ const LoginScreen = ({ navigation }) => {
 				{ text: 'Create account', onPress: () => navigation.push('Register') },
 			]);
 		} finally {
-			setLoading(false);
+			if (isMountedRef.current) setLoading(false);
 		}
 	};
 

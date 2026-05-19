@@ -17,18 +17,16 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { timeAgo } from '../utils/timeago';
+import { truncateName } from '../utils/truncateName';
 import { useTheme } from '../hooks/useTheme';
-
-// Truncate chat name at 20 chars with ellipsis
-const truncateName = (name = '') =>
-	name.length > 20
-		? name[0].toUpperCase() + name.slice(1, 19).toLowerCase() + '…'
-		: name[0].toUpperCase() + name.slice(1).toLowerCase();
 
 const ChatScreen = ({ navigation, route }) => {
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState([]);
 	const scrollViewRef = useRef(null);
+	// Tracks whether the initial scroll-to-bottom has been done (instant, no animation)
+	// Subsequent scrolls (new messages) use animation so the user sees the update
+	const hasScrolledInitially = useRef(false);
 	const { colors, isDark } = useTheme();
 
 	// Header — does NOT depend on messages (content never changes with messages)
@@ -53,7 +51,9 @@ const ChatScreen = ({ navigation, route }) => {
 							paddingLeft: 5,
 							fontWeight: Platform.OS === 'android' ? 'bold' : '900',
 							fontSize: 21,
-							color: Platform.OS === 'android' ? '#deebdd' : '#f5f7fa',
+							color: Platform.OS === 'android'
+								? colors.headerTitleAndroid
+								: colors.headerTitle,
 						}}
 					>
 						{truncateName(route.params.chatName)}
@@ -78,7 +78,7 @@ const ChatScreen = ({ navigation, route }) => {
 				</View>
 			),
 		});
-	}, [navigation]);
+	}, [navigation, route.params.chatName, route.params.image]);
 
 	useLayoutEffect(() => {
 		const messagesRef = collection(db, 'chat', route.params.id, 'messages');
@@ -129,9 +129,14 @@ const ChatScreen = ({ navigation, route }) => {
 				<ScrollView
 					ref={scrollViewRef}
 					contentContainerStyle={{ paddingTop: 20 }}
-					onContentSizeChange={() =>
-						scrollViewRef.current?.scrollToEnd({ animated: true })
-					}
+					onContentSizeChange={() => {
+						if (!hasScrolledInitially.current) {
+							scrollViewRef.current?.scrollToEnd({ animated: false });
+							hasScrolledInitially.current = true;
+						} else {
+							scrollViewRef.current?.scrollToEnd({ animated: true });
+						}
+					}}
 				>
 					{messages.map(({ id, data }) =>
 						data.email === auth.currentUser?.email ? (
@@ -181,7 +186,7 @@ const ChatScreen = ({ navigation, route }) => {
 						value={input}
 						onChangeText={(text) => setInput(text)}
 						onSubmitEditing={sendMessage}
-						style={[styles.textInput, { backgroundColor: colors.inputBackground }]}
+						style={[styles.textInput, { backgroundColor: colors.inputBackground, color: colors.inputText }]}
 					/>
 					<TouchableOpacity
 						style={{
@@ -227,7 +232,6 @@ const styles = StyleSheet.create({
 		marginRight: 15,
 		borderColor: 'transparent',
 		padding: 10,
-		color: 'gray',
 		borderRadius: 30,
 	},
 	receiverText: {

@@ -53,7 +53,8 @@ const RegisterScreen = ({ navigation }) => {
 				displayName: name.trim(),
 				photoURL,
 			});
-			navigation.replace('Home');
+			// Navigation to Home is handled by LoginScreen's onAuthStateChanged listener
+			// to avoid a double-navigation race (both screens navigating simultaneously)
 		} catch (error) {
 			Alert.alert('Registration failed', error.message, [
 				{ text: 'OK', style: 'cancel' },
@@ -100,6 +101,7 @@ const RegisterScreen = ({ navigation }) => {
 						autoFocus
 						value={name}
 						onChangeText={setName}
+						disabled={loading}
 					/>
 					<Input
 						placeholder="Email"
@@ -107,6 +109,7 @@ const RegisterScreen = ({ navigation }) => {
 						keyboardType="email-address"
 						value={email}
 						onChangeText={setEmail}
+						disabled={loading}
 					/>
 					<Input
 						placeholder="Password (min. 6 characters)"
@@ -114,6 +117,7 @@ const RegisterScreen = ({ navigation }) => {
 						value={password}
 						onChangeText={setPassword}
 						onSubmitEditing={register}
+						disabled={loading}
 					/>
 
 					{localImageUri !== '' && (
@@ -125,7 +129,7 @@ const RegisterScreen = ({ navigation }) => {
 
 				<View style={styles.buttonsGroup}>
 					<Button
-						icon={<Icon name="camera" size={22} color="black" />}
+						icon={<Icon name="camera" size={22} color={colors.iconOnLight} />}
 						onPress={handlePickCamera}
 						disabled={loading}
 						title="Camera"
@@ -134,7 +138,7 @@ const RegisterScreen = ({ navigation }) => {
 						raised
 						onPress={handlePickGallery}
 						disabled={loading}
-						icon={<Icon name="cellphone-arrow-down" size={22} color="black" />}
+						icon={<Icon name="cellphone-arrow-down" size={22} color={colors.iconOnLight} />}
 						title="Gallery"
 					/>
 				</View>

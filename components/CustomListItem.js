@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
 import { AntDesign } from '@expo/vector-icons';
+import { truncateName } from '../utils/truncateName';
 
 const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 	const [chatMessage, setChatMessage] = useState([]);
@@ -59,11 +60,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 		);
 	};
 
-	// Truncar nombre con ellipsis si supera 20 caracteres
-	const displayName =
-		chatName.length > 20
-			? chatName[0].toUpperCase() + chatName.slice(1, 19).toLowerCase() + '…'
-			: chatName[0].toUpperCase() + chatName.slice(1).toLowerCase();
+	const displayName = truncateName(chatName);
 
 	return (
 		<ListItem

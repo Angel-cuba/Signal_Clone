@@ -31,6 +31,13 @@ const AddChatScreen = ({ navigation }) => {
 			return Alert.alert('Name too long', 'Chat name must be 50 characters or less.');
 		}
 
+		const currentUser = auth.currentUser;
+		if (!currentUser) {
+			Alert.alert('Session expired', 'Please sign in again.');
+			navigation.replace('Login');
+			return;
+		}
+
 		setLoading(true);
 		try {
 			// Subir imagen a Storage si hay una imagen local seleccionada
@@ -43,7 +50,7 @@ const AddChatScreen = ({ navigation }) => {
 				chatName: trimmedName,
 				image: imageURL,
 				timestamp: serverTimestamp(),
-				userId: auth.currentUser.uid,
+				userId: currentUser.uid,
 			});
 
 			navigation.goBack();
@@ -72,7 +79,7 @@ const AddChatScreen = ({ navigation }) => {
 					value={chatName}
 					onChangeText={setChatName}
 					maxLength={50}
-					leftIcon={<Icon name="wechat" size={24} color="black" />}
+					leftIcon={<Icon name="wechat" size={24} color={colors.text} />}
 				/>
 
 				{localImageUri !== '' ? (
@@ -80,7 +87,7 @@ const AddChatScreen = ({ navigation }) => {
 						<Image source={{ uri: localImageUri }} style={{ width: 160, height: 160, borderRadius: 12 }} />
 					</View>
 				) : (
-					<Text style={styles.text}>Add a chat image (optional)</Text>
+					<Text style={[styles.text, { color: colors.helperText }]}>Add a chat image (optional)</Text>
 				)}
 
 				<View style={styles.buttonsGroup}>
@@ -158,7 +165,6 @@ const styles = StyleSheet.create({
 	},
 	text: {
 		fontSize: 16,
-		color: 'navy',
 		fontWeight: Platform.OS === 'android' ? 'bold' : '600',
 		marginVertical: 12,
 	},

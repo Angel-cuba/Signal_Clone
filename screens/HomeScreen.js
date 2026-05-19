@@ -20,6 +20,23 @@ import LottieView from 'lottie-react-native';
 
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hora
 
+// Defined outside HomeScreen so React reconciles it as a stable component reference
+// (not a new function type on every re-render, which would cause unmount/remount flicker)
+const LoadingView = () => {
+	const { colors } = useTheme();
+	return (
+		<ListItem bottomDivider containerStyle={{ backgroundColor: colors.chatBackground }}>
+			<LottieView
+				source={require('../assets/animations/9329-loading.json')}
+				style={{ height: 100 }}
+				autoPlay
+				loop
+				speed={2}
+			/>
+		</ListItem>
+	);
+};
+
 const HomeScreen = ({ navigation }) => {
 	const [chats, setChats] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -145,18 +162,6 @@ const HomeScreen = ({ navigation }) => {
 			userId,
 		});
 	};
-	const LoadingView = ({ id }) => (
-		<ListItem key={id} style={{ backgroundColor: '#deebdd' }}>
-			<LottieView
-				source={require('../assets/animations/9329-loading.json')}
-				style={{ height: 100 }}
-				autoPlay={true}
-				loop={true}
-				speed={2}
-			/>
-		</ListItem>
-	);
-
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
 			<ScrollView style={styles.scrollContainer}>
