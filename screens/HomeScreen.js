@@ -1,5 +1,6 @@
-import React, { useLayoutEffect, useState, useEffect } from 'react';
+import React, { useLayoutEffect, useState, useEffect, useRef } from 'react';
 import {
+	AppState,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -14,48 +15,46 @@ import CustomListItem from '../components/CustomListItem';
 import { firebase, db } from '../firebase/firebase';
 import LottieView from 'lottie-react-native';
 
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hora
+
 const HomeScreen = ({ navigation }) => {
 	const [chats, setChats] = useState([]);
-	const [loading, setLoading] = useState(false);
-	// console.log(chats.length);
-	// console.log('chats from Homescreen', chats);
-	// console.log('images', chats.data.image);
+	const [loading, setLoading] = useState(true);
+	const backgroundTime = useRef(null);
 
-	const signOutUser = () => {
-		firebase
-			.auth()
-			.signOut()
-			.then(() => navigation.replace('Login'));
+	const signOutUser = async () => {
+		await firebase.auth().signOut();
+		navigation.replace('Login');
 	};
-	const timerUserSignOut = () => {
-		if (firebase.auth().currentUser) {
-			setTimeout(() => {
-				firebase
-					.auth()
-					.signOut()
-					.then(() => navigation.replace('Login'));
-			}, 3600000);
-		}
-	};
+
+	// Manejo de sesión con AppState — detecta cuando la app vuelve del background
+	useEffect(() => {
+		const handleAppStateChange = (nextState) => {
+			if (nextState === 'background' || nextState === 'inactive') {
+				backgroundTime.current = Date.now();
+			} else if (nextState === 'active' && backgroundTime.current) {
+				const elapsed = Date.now() - backgroundTime.current;
+				if (elapsed >= SESSION_TIMEOUT_MS) {
+					signOutUser();
+				}
+				backgroundTime.current = null;
+			}
+		};
+
+		const subscription = AppState.addEventListener('change', handleAppStateChange);
+		return () => subscription.remove();
+	}, []);
 
 	useEffect(() => {
-		setLoading(true);
-
-		timerUserSignOut();
-
-		const unsubscribe = db.collection('chat').onSnapshot((snapshot) =>
+		const unsubscribe = db.collection('chat').onSnapshot((snapshot) => {
 			setChats(
 				snapshot.docs.map((doc) => ({
 					id: doc.id,
 					data: doc.data(),
 				}))
-			)
-		);
-		if (chats) {
-			setTimeout(() => {
-				setLoading(false);
-			}, 2000);
-		}
+			);
+			setLoading(false);
+		});
 		return unsubscribe;
 	}, []);
 

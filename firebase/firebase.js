@@ -1,19 +1,31 @@
-import firebase from 'firebase'
+import firebase from 'firebase/app';
+import 'firebase/auth';
+import 'firebase/firestore';
+import 'firebase/storage';
 
+import {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID,
+} from '@env';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA40ImJKKALtaTe66cM7__gOk4JEuk1ORU",
-  authDomain: "native-app-5402f.firebaseapp.com",
-  projectId: "native-app-5402f",
-  storageBucket: "native-app-5402f.appspot.com",
-  messagingSenderId: "656672557503",
-  appId: "1:656672557503:web:0d35cd9bf5fa68c6f7f90a",
+  apiKey: FIREBASE_API_KEY,
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  projectId: FIREBASE_PROJECT_ID,
+  storageBucket: FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
+  appId: FIREBASE_APP_ID,
 };
 
-!firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app()
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
-const db = firebase.firestore()
-// const db = app.firestore()
-// const auth = firebase.auth()
+const db = firebase.firestore();
+const storage = firebase.storage();
 
-export { firebase, db }
+export { firebase, db, storage };

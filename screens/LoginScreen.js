@@ -21,20 +21,15 @@ const LoginScreen = ({ navigation }) => {
 	}, []);
 
 	const SignIn = async () => {
+		if (!email.trim() || !password) {
+			return Alert.alert('Missing fields', 'Please enter your email and password.');
+		}
 		try {
-			await firebase.auth().signInWithEmailAndPassword(email, password);
-			console.log('🥰Firebase Login Ok');
+			await firebase.auth().signInWithEmailAndPassword(email.trim(), password);
 		} catch (error) {
-			Alert.alert('Yooo dude', error.message + '\n\n... What would you like to do 👀', [
-				{
-					text: 'Ok...😘',
-					onPress: () => console.log('Ok'),
-					style: 'cancel',
-				},
-				{
-					text: 'Sign Up',
-					onPress: () => navigation.push('Register'),
-				},
+			Alert.alert('Sign in failed', error.message, [
+				{ text: 'OK', style: 'cancel' },
+				{ text: 'Create account', onPress: () => navigation.push('Register') },
 			]);
 		}
 	};
@@ -43,9 +38,7 @@ const LoginScreen = ({ navigation }) => {
 		<KeyboardAvoidingView behavior="padding" style={styles.container}>
 			<StatusBar style="light" />
 			<Image
-				source={{
-					uri: 'https://blog.mozilla.org/internetcitizen/files/2018/08/signal-logo.png',
-				}}
+				source={require('../assets/icon.png')}
 				style={{ width: 200, height: 200 }}
 			/>
 			<View style={styles.InputContainer}>

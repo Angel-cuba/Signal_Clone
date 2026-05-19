@@ -5,84 +5,87 @@ import { db, firebase } from '../firebase/firebase';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
+import { uploadImageToStorage } from '../utils/uploadImage';
 
 const AddChatScreen = ({ navigation }) => {
-	const [input, setInput] = useState('');
-	const [chatImage, setChatImage] = useState('');
+	const [chatName, setChatName] = useState('');
+	const [localImageUri, setLocalImageUri] = useState('');
 	const [loading, setLoading] = useState(false);
-
-	const createChat = async () => {
-		setLoading(true);
-		await db
-			.collection('chat')
-			.add({
-				chatName: input,
-				image: chatImage,
-				// timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-				userId: firebase.auth().currentUser.uid,
-			})
-			.then(() => {
-				setTimeout(() => {
-					setLoading(false);
-					navigation.navigate('Home');
-				}, 2500);
-			})
-			.catch((error) => Alert.alert(error.message));
-	};
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
-			title: 'Add a new Chat',
-			// headerBackTitle: 'Chats',
-			// headerTintColor: { color: 'red' },
+			title: 'New Chat',
 			headerTitleAlign: 'center',
 		});
 	}, [navigation]);
 
-	//Picture for chat Header
-	const uploadPictureWithCamera = async () => {
+	const createChat = async () => {
+		const trimmedName = chatName.trim();
+		if (!trimmedName) {
+			return Alert.alert('Chat name required', 'Please enter a name for the chat.');
+		}
+		if (trimmedName.length > 50) {
+			return Alert.alert('Name too long', 'Chat name must be 50 characters or less.');
+		}
+
+		setLoading(true);
+		try {
+			// Subir imagen a Storage si hay una imagen local seleccionada
+			let imageURL = '';
+			if (localImageUri) {
+				imageURL = await uploadImageToStorage(localImageUri, 'chats');
+			}
+
+			await db.collection('chat').add({
+				chatName: trimmedName,
+				image: imageURL,
+				timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+				userId: firebase.auth().currentUser.uid,
+			});
+
+			navigation.navigate('Home');
+		} catch (error) {
+			Alert.alert('Could not create chat', error.message);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const pickImageWithCamera = async () => {
 		if (Platform.OS !== 'web') {
 			const { status } = await ImagePicker.requestCameraPermissionsAsync();
 			if (status !== 'granted') {
-				Alert.alert('You have to authorize permissions', [{ text: 'Ok....💥', style: 'cancel' }]);
+				Alert.alert('Permission required', 'Camera access is needed to add a chat image.');
 				return;
 			}
 		}
 		const result = await ImagePicker.launchCameraAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.All,
+			mediaTypes: ImagePicker.MediaTypeOptions.Images,
 			allowsEditing: true,
-			aspect: [4, 3],
-			quality: 1,
+			aspect: [1, 1],
+			quality: 0.7,
 		});
-		console.log(result);
 		if (!result.cancelled) {
-			setChatImage(result.uri);
-			console.log('Done with camera ❤');
+			setLocalImageUri(result.uri);
 		}
 	};
-	const uploadPictureFromPhone = async () => {
+
+	const pickImageFromGallery = async () => {
 		if (Platform.OS !== 'web') {
 			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-			if (status.cancelled) {
-				Alert.alert('Has cancelled permissions', [
-					{ text: 'Give permissions and continue', style: 'cancel' },
-				]);
-			}
 			if (status !== 'granted') {
-				Alert.alert('You have to authorize permissions', [{ text: 'Ok....💥', style: 'cancel' }]);
+				Alert.alert('Permission required', 'Gallery access is needed to select a chat image.');
 				return;
 			}
 		}
 		const result = await ImagePicker.launchImageLibraryAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.All,
+			mediaTypes: ImagePicker.MediaTypeOptions.Images,
 			allowsEditing: true,
-			aspect: [4, 3],
-			quality: 1,
+			aspect: [1, 1],
+			quality: 0.7,
 		});
-		console.log(result);
 		if (!result.cancelled) {
-			setChatImage(result.uri);
-			console.log('image upload successfully');
+			setLocalImageUri(result.uri);
 		}
 	};
 
@@ -90,35 +93,23 @@ const AddChatScreen = ({ navigation }) => {
 		<>
 			<View style={styles.container}>
 				<Input
-					placeholder="Enter a new chat"
-					value={input}
-					onChangeText={(text) => setInput(text)}
-					// onSubmitEditing={createChat}
-					leftIcon={<Icon name="wechat" type="antdesign" size={24} color="black" />}
+					placeholder="Chat name"
+					value={chatName}
+					onChangeText={setChatName}
+					maxLength={50}
+					leftIcon={<Icon name="wechat" size={24} color="black" />}
 				/>
-				<Input
-					placeholder="Chat image (Optional)"
-					type="text"
-					value={chatImage}
-					onChangeText={(text) => setChatImage(text)}
-					onSubmitEditing={createChat}
-					// leftIcon={<Icon name="wechat" type="antdesign" size={24} color="black" />}
-				/>
-				{/* Buttons for camera an phone image uploads */}
-				{chatImage !== '' ? (
-					<View style={styles.image}>
-						<Image source={{ uri: chatImage }} style={{ width: 200, height: 200 }} />
+
+				{localImageUri !== '' ? (
+					<View style={styles.imagePreview}>
+						<Image source={{ uri: localImageUri }} style={{ width: 160, height: 160, borderRadius: 12 }} />
 					</View>
 				) : (
-					<View>
-						<Text style={styles.text}>Upload chat image</Text>
-					</View>
+					<Text style={styles.text}>Add a chat image (optional)</Text>
 				)}
-				<View
-					style={[styles.buttonsBroup, chatImage === '' && styles.buttonsBroupMarginTop(chatImage)]}
-				>
+
+				<View style={styles.buttonsGroup}>
 					<Button
-						// raised
 						icon={
 							<LottieView
 								style={{ height: 30 }}
@@ -127,16 +118,12 @@ const AddChatScreen = ({ navigation }) => {
 								speed={0.8}
 							/>
 						}
-						styles={styles.button}
-						onPress={uploadPictureWithCamera}
-						// iconPosition="right"
+						onPress={pickImageWithCamera}
 						title="Camera"
 					/>
 					<Button
 						raised
-						styles={styles.button}
-						onPress={uploadPictureFromPhone}
-						// icon={<Icon name="cellphone-arrow-down" size={24} color="black" />}
+						onPress={pickImageFromGallery}
 						icon={
 							<LottieView
 								style={{ height: 29 }}
@@ -145,10 +132,16 @@ const AddChatScreen = ({ navigation }) => {
 								speed={0.793}
 							/>
 						}
-						title="Phone"
+						title="Gallery"
 					/>
 				</View>
-				<Button onPress={createChat} disabled={!input} title="Create a new chat" />
+
+				<Button
+					onPress={createChat}
+					disabled={!chatName.trim() || loading}
+					title={loading ? 'Creating...' : 'Create chat'}
+					containerStyle={styles.createButton}
+				/>
 			</View>
 			{loading && (
 				<View style={styles.loadingScreen}>
@@ -170,33 +163,30 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		alignItems: 'center',
-		// justifyContent: 'center', //Este es que sube y baja pa darle espacio a la foto
 		paddingVertical: 10,
-		paddingTop: 50,
+		paddingTop: 40,
 		backgroundColor: 'white',
-		// backgroundColor: 'red',
 	},
-	buttonsBroup: {
-		marginVertical: 10,
+	buttonsGroup: {
+		marginVertical: 16,
 		flexDirection: 'row',
 		justifyContent: 'space-between',
-		width: 250,
-		// backgroundColor: 'red',
+		gap: 12,
+		width: 260,
 	},
-	buttonsBroupMarginTop: (chatImage = '') => ({
-		marginTop: chatImage === '' && 30,
-	}),
-	image: {
-		width: 200,
-		height: 200,
+	imagePreview: {
+		marginVertical: 12,
+		alignItems: 'center',
 	},
-	button: {
-		backgroundColor: 'green',
+	createButton: {
+		width: 220,
+		marginTop: 10,
 	},
 	text: {
-		fontSize: 20,
+		fontSize: 16,
 		color: 'navy',
-		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+		fontWeight: Platform.OS === 'android' ? 'bold' : '600',
+		marginVertical: 12,
 	},
 	loadingScreen: {
 		position: 'absolute',

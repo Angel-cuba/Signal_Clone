@@ -6,92 +6,95 @@ import { firebase } from '../firebase/firebase';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import LottieView from 'lottie-react-native';
+import { uploadImageToStorage } from '../utils/uploadImage';
+
+const DEFAULT_AVATAR = 'https://res.cloudinary.com/dqaerysgb/image/upload/v1630358737/jooly8uzpykfvixik2vv.jpg';
 
 const RegisterScreen = ({ navigation }) => {
 	const [name, setName] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
-	const [imageUrl, setImageUrl] = useState('');
+	const [localImageUri, setLocalImageUri] = useState('');
 	const [loading, setLoading] = useState(false);
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			headerBackTitle: 'Back to Login',
-			headerTintColor: { color: 'white' },
+			headerTintColor: 'white',
 		});
 	}, [navigation]);
 
-	const register = () => {
+	const register = async () => {
+		// Validaciones básicas
+		if (!name.trim()) {
+			return Alert.alert('Missing information', 'Please enter your full name.');
+		}
+		if (!email.trim()) {
+			return Alert.alert('Missing information', 'Please enter your email.');
+		}
+		if (password.length < 6) {
+			return Alert.alert('Weak password', 'Password must be at least 6 characters.');
+		}
+
 		setLoading(true);
-		firebase
-			.auth()
-			.createUserWithEmailAndPassword(email, password)
-			.then((authUser) => {
-				authUser.user.updateProfile({
-					displayName: name,
-					photoURL:
-						imageUrl ||
-						'https://res.cloudinary.com/dqaerysgb/image/upload/v1630358737/jooly8uzpykfvixik2vv.jpg',
-				});
-			})
-			.then(() => {
-				setTimeout(() => {
-					setLoading(false);
-				}, 2000);
-			})
-			.catch((error) =>
-				Alert.alert('Yooo dude', error.message + '\n\n... I think that u should change it 👀', [
-					{
-						text: 'Ok...😘',
-						onPress: () => console.log('Ok'),
-						style: 'cancel',
-					},
-					{
-						text: 'Try again',
-						onPress: () => navigation.push('Register'),
-					},
-				])
-			);
+		try {
+			const authUser = await firebase.auth().createUserWithEmailAndPassword(email.trim(), password);
+
+			// Si hay imagen local, subirla a Storage y obtener URL remota
+			let photoURL = DEFAULT_AVATAR;
+			if (localImageUri) {
+				photoURL = await uploadImageToStorage(localImageUri, 'avatars');
+			}
+
+			await authUser.user.updateProfile({
+				displayName: name.trim(),
+				photoURL,
+			});
+		} catch (error) {
+			Alert.alert('Registration failed', error.message, [
+				{ text: 'OK', style: 'cancel' },
+				{ text: 'Try again', onPress: () => navigation.push('Register') },
+			]);
+		} finally {
+			setLoading(false);
+		}
 	};
 
-	const uploadPictureWithCamera = async () => {
+	const pickImageWithCamera = async () => {
 		if (Platform.OS !== 'web') {
 			const { status } = await ImagePicker.requestCameraPermissionsAsync();
 			if (status !== 'granted') {
-				Alert.alert('You have to authorize permissions', [{ text: 'Ok....💥', style: 'cancel' }]);
+				Alert.alert('Permission required', 'Camera access is needed to take a profile picture.');
 				return;
 			}
 		}
 		const result = await ImagePicker.launchCameraAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.All,
+			mediaTypes: ImagePicker.MediaTypeOptions.Images,
 			allowsEditing: true,
-			aspect: [4, 3],
-			quality: 1,
+			aspect: [1, 1],
+			quality: 0.7,
 		});
-		console.log(result);
 		if (!result.cancelled) {
-			setImageUrl(result.uri);
-			console.log('Done with camera ❤');
+			setLocalImageUri(result.uri);
 		}
 	};
-	const uploadPictureFromPhone = async () => {
+
+	const pickImageFromGallery = async () => {
 		if (Platform.OS !== 'web') {
 			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 			if (status !== 'granted') {
-				Alert.alert('You have to authorize permissions', [{ text: 'Ok....💥', style: 'cancel' }]);
+				Alert.alert('Permission required', 'Gallery access is needed to select a profile picture.');
 				return;
 			}
 		}
 		const result = await ImagePicker.launchImageLibraryAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.All,
+			mediaTypes: ImagePicker.MediaTypeOptions.Images,
 			allowsEditing: true,
-			aspect: [4, 3],
-			quality: 1,
+			aspect: [1, 1],
+			quality: 0.7,
 		});
-		console.log(result);
 		if (!result.cancelled) {
-			setImageUrl(result.uri);
-			console.log('image upload successfully');
+			setLocalImageUri(result.uri);
 		}
 	};
 
@@ -106,57 +109,53 @@ const RegisterScreen = ({ navigation }) => {
 					<Input
 						placeholder="Full Name"
 						autoFocus
-						type="text"
 						value={name}
-						onChangeText={(text) => setName(text)}
+						onChangeText={setName}
 					/>
 					<Input
 						placeholder="Email"
-						type="email"
+						autoCapitalize="none"
+						keyboardType="email-address"
 						value={email}
-						onChangeText={(text) => setEmail(text)}
+						onChangeText={setEmail}
 					/>
 					<Input
-						placeholder="Password"
-						type="password"
+						placeholder="Password (min. 6 characters)"
 						secureTextEntry
 						value={password}
-						onChangeText={(text) => setPassword(text)}
-					/>
-					<Input
-						placeholder="Profile Picture URL (optional)"
-						type="text"
-						value={imageUrl}
-						onChangeText={(text) => setImageUrl(text)}
+						onChangeText={setPassword}
 						onSubmitEditing={register}
 					/>
 
-					{imageUrl !== '' && (
-						<View style={styles.image}>
-							<Image source={{ uri: imageUrl }} style={{ width: 200, height: 200 }} />
+					{localImageUri !== '' && (
+						<View style={styles.imagePreview}>
+							<Image source={{ uri: localImageUri }} style={{ width: 120, height: 120, borderRadius: 60 }} />
 						</View>
 					)}
 				</View>
 
-				<View style={styles.buttonsBroup}>
+				<View style={styles.buttonsGroup}>
 					<Button
-						// raised
-						icon={<Icon name="camera" size={24} color="black" />}
-						styles={styles.button}
-						onPress={uploadPictureWithCamera}
-						// iconPosition="right"
+						icon={<Icon name="camera" size={22} color="black" />}
+						onPress={pickImageWithCamera}
 						title="Camera"
 					/>
 					<Button
 						raised
-						styles={styles.button}
-						onPress={uploadPictureFromPhone}
-						icon={<Icon name="cellphone-arrow-down" size={24} color="black" />}
-						title="Phone"
+						onPress={pickImageFromGallery}
+						icon={<Icon name="cellphone-arrow-down" size={22} color="black" />}
+						title="Gallery"
 					/>
 				</View>
 
-				<Button raised styles={styles.button} onPress={register} title="Register" />
+				<Button
+					raised
+					onPress={register}
+					disabled={loading}
+					title={loading ? 'Creating account...' : 'Register'}
+					containerStyle={styles.registerButton}
+				/>
+
 				{loading && (
 					<View style={styles.loadingScreen}>
 						<LottieView
@@ -178,15 +177,19 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		alignItems: 'center',
-		justifyContent: 'center', //Este es que sube y baja pa darle espacio a la foto
+		justifyContent: 'center',
 		padding: 10,
 		backgroundColor: 'white',
 	},
-	image: {
-		width: 200,
-		height: 200,
+	imagePreview: {
+		alignItems: 'center',
+		marginBottom: 10,
 	},
 	button: {
+		width: 200,
+		marginTop: 10,
+	},
+	registerButton: {
 		width: 200,
 		marginTop: 10,
 	},
@@ -199,11 +202,12 @@ const styles = StyleSheet.create({
 		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
 		color: Platform.OS === 'android' ? '#1e3b70' : '#29539b',
 	},
-	buttonsBroup: {
+	buttonsGroup: {
 		marginVertical: 10,
 		flexDirection: 'row',
 		justifyContent: 'space-between',
-		width: 200,
+		width: 220,
+		gap: 10,
 	},
 	loadingScreen: {
 		position: 'absolute',

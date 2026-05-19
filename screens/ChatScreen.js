@@ -89,11 +89,14 @@ const ChatScreen = ({ navigation, route }) => {
 	}, [route]);
 
 	const sendMessage = () => {
+		const trimmed = input.trim();
+		if (!trimmed) return; // No enviar mensajes vacíos
+
 		Keyboard.dismiss();
 
 		db.collection('chat').doc(route.params.id).collection('messages').add({
 			timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-			message: input,
+			message: trimmed,
 			displayName: firebase.auth().currentUser.displayName,
 			email: firebase.auth().currentUser.email,
 			photoURL: firebase.auth().currentUser.photoURL,
@@ -113,31 +116,24 @@ const ChatScreen = ({ navigation, route }) => {
 				{/* <> */}
 				<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
 					{messages.map(({ id, data }) =>
-						// console.log(data.message);
-						// console.log(data.email);
-						// console.log(firebase.auth().currentUser.email);
 						data.email === firebase.auth().currentUser.email ? (
-							<View key={id} style={styles.recierver}>
+							<View key={id} style={styles.receiver}>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									position="absolute"
 									rounded
-									// WEB
 									containerStyle={{
 										position: 'absolute',
 										right: -33,
 										top: 5,
 									}}
-									// right={-5}
-									// top={-15}
 									size={30}
 								/>
-								<Text style={styles.recieverText}>{data.message}</Text>
-								<Text style={styles.recieverTimeago}>
+								<Text style={styles.receiverText}>{data.message}</Text>
+								<Text style={styles.receiverTimeago}>
 									<TimeAgo
 										time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
 										opts={{ minInterval: 60 }}
-										locale="fi"
 									/>
 								</Text>
 							</View>
@@ -152,8 +148,6 @@ const ChatScreen = ({ navigation, route }) => {
 										top: 5,
 										left: -33,
 									}}
-									// left={-5}
-									// top={-15}
 									size={30}
 								/>
 								<Text style={styles.senderText}>{data.message}</Text>
@@ -161,7 +155,6 @@ const ChatScreen = ({ navigation, route }) => {
 									<TimeAgo
 										time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
 										opts={{ minInterval: 60 }}
-										locale="fi"
 									/>
 								</Text>
 							</View>
@@ -180,13 +173,13 @@ const ChatScreen = ({ navigation, route }) => {
 					<TouchableOpacity
 						style={{
 							width: 60,
-							// backgroundColor: 'green',
 							position: 'absolute',
 							top: 6,
 							right: 0,
+							opacity: input.trim() ? 1 : 0.3,
 						}}
 						onPress={sendMessage}
-						opacity={0.5}
+						disabled={!input.trim()}
 					>
 						<Ionicons name="send" size={Platform.isPad ? 45 : 40} color="navy" />
 					</TouchableOpacity>
@@ -235,10 +228,9 @@ const styles = StyleSheet.create({
 		color: 'gray',
 		borderRadius: 30,
 	},
-	recieverText: {
+	receiverText: {
 		fontSize: 16,
 		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-		// color: Platform.OS === 'android' ? '#d3d3d3' : '#b0f3f1',
 		marginLeft: 2,
 		...Platform.select({
 			ios: { color: '#b0f3f1' },
@@ -246,7 +238,7 @@ const styles = StyleSheet.create({
 			default: { color: '#7f8c8d' },
 		}),
 	},
-	recierver: {
+	receiver: {
 		padding: 15,
 		backgroundColor: '#2a2a72',
 		alignSelf: 'flex-end',
@@ -259,7 +251,7 @@ const styles = StyleSheet.create({
 		maxWidth: '80%',
 		position: 'relative',
 	},
-	recieverTimeago: {
+	receiverTimeago: {
 		position: 'absolute',
 		bottom: -14,
 		right: 16,
