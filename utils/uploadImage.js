@@ -1,3 +1,4 @@
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase/firebase';
 
 /**
@@ -16,9 +17,8 @@ export const uploadImageToStorage = async (localUri, folder = 'images') => {
   // Nombre único basado en timestamp
   const filename = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
 
-  const ref = storage.ref().child(filename);
-  await ref.put(blob);
+  const storageRef = ref(storage, filename);
+  await uploadBytes(storageRef, blob);
 
-  const downloadURL = await ref.getDownloadURL();
-  return downloadURL;
+  return getDownloadURL(storageRef);
 };

@@ -1,7 +1,8 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { StyleSheet, Text, View, Alert, Image, Platform } from 'react-native';
-import { Input, Button } from 'react-native-elements';
-import { db, firebase } from '../firebase/firebase';
+import { Input, Button } from '@rneui/themed';
+import { auth, db } from '../firebase/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
 import { uploadImageToStorage } from '../utils/uploadImage';
@@ -36,11 +37,11 @@ const AddChatScreen = ({ navigation }) => {
 				imageURL = await uploadImageToStorage(localImageUri, 'chats');
 			}
 
-			await db.collection('chat').add({
+			await addDoc(collection(db, 'chat'), {
 				chatName: trimmedName,
 				image: imageURL,
-				timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-				userId: firebase.auth().currentUser.uid,
+				timestamp: serverTimestamp(),
+				userId: auth.currentUser.uid,
 			});
 
 			navigation.navigate('Home');

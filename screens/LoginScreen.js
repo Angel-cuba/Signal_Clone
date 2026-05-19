@@ -1,8 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, KeyboardAvoidingView, Alert, TouchableOpacity } from 'react-native';
-import { Button, Input, Image } from 'react-native-elements';
-import { firebase } from '../firebase/firebase';
+import { Button, Input, Image } from '@rneui/themed';
+import { auth } from '../firebase/firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { AntDesign, Feather } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
@@ -11,8 +12,7 @@ const LoginScreen = ({ navigation }) => {
 	const [showPassword, setShowPassword] = useState(false);
 
 	useEffect(() => {
-		const unsubscribe = firebase.auth().onAuthStateChanged((authUser) => {
-			// console.log(authUser);
+		const unsubscribe = onAuthStateChanged(auth, (authUser) => {
 			if (authUser) {
 				navigation.replace('Home');
 			}
@@ -25,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
 			return Alert.alert('Missing fields', 'Please enter your email and password.');
 		}
 		try {
-			await firebase.auth().signInWithEmailAndPassword(email.trim(), password);
+			await signInWithEmailAndPassword(auth, email.trim(), password);
 		} catch (error) {
 			Alert.alert('Sign in failed', error.message, [
 				{ text: 'OK', style: 'cancel' },

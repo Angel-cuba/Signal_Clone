@@ -1,8 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useLayoutEffect } from 'react';
 import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Image, Alert } from 'react-native';
-import { Button, Input } from 'react-native-elements';
-import { firebase } from '../firebase/firebase';
+import { Button, Input } from '@rneui/themed';
+import { auth } from '../firebase/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
 import { uploadImageToStorage } from '../utils/uploadImage';
@@ -38,7 +39,7 @@ const RegisterScreen = ({ navigation }) => {
 
 		setLoading(true);
 		try {
-			const authUser = await firebase.auth().createUserWithEmailAndPassword(email.trim(), password);
+			const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
 
 			// Si hay imagen local, subirla a Storage y obtener URL remota
 			let photoURL = DEFAULT_AVATAR;
@@ -46,7 +47,7 @@ const RegisterScreen = ({ navigation }) => {
 				photoURL = await uploadImageToStorage(localImageUri, 'avatars');
 			}
 
-			await authUser.user.updateProfile({
+			await updateProfile(user, {
 				displayName: name.trim(),
 				photoURL,
 			});

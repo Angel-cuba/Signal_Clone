@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ListItem, Avatar } from 'react-native-elements';
-import { db, firebase } from '../firebase/firebase';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ListItem, Avatar } from '@rneui/themed';
+import { auth, db } from '../firebase/firebase';
+import {
+	collection, doc, query, orderBy, onSnapshot,
+	getDocs, writeBatch, deleteDoc,
+} from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
 import { AntDesign } from '@expo/vector-icons';
 
@@ -9,18 +13,16 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 	const [chatMessage, setChatMessage] = useState([]);
 
 	useEffect(() => {
-		const unsubscribe = db
-			.collection('chat')
-			.doc(id)
-			.collection('messages')
-			.orderBy('timestamp', 'desc')
-			.onSnapshot((snapshot) => setChatMessage(snapshot.docs.map((doc) => doc.data())));
-
+		const messagesRef = collection(db, 'chat', id, 'messages');
+		const q = query(messagesRef, orderBy('timestamp', 'desc'));
+		const unsubscribe = onSnapshot(q, (snapshot) =>
+			setChatMessage(snapshot.docs.map((doc) => doc.data()))
+		);
 		return unsubscribe;
 	}, []);
 
 	// Null-safe: currentUser puede ser null durante la transición de auth al arrancar en frío
-	const currentUser = firebase.auth().currentUser?.uid ?? null;
+	const currentUser = auth.currentUser?.uid ?? null;
 
 	const deleteChatRoom = () => {
 		Alert.alert(
@@ -35,16 +37,16 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 						try {
 							// Firestore limita a 500 escrituras por batch — chunkeamos para chats grandes
 							const BATCH_SIZE = 499;
-							const messagesRef = db.collection('chat').doc(id).collection('messages');
-							const snapshot = await messagesRef.get();
+							const messagesRef = collection(db, 'chat', id, 'messages');
+							const snapshot = await getDocs(messagesRef);
 
 							for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
-								const batch = db.batch();
-								snapshot.docs.slice(i, i + BATCH_SIZE).forEach((doc) => batch.delete(doc.ref));
+								const batch = writeBatch(db);
+								snapshot.docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
 								await batch.commit();
 							}
 
-							await db.collection('chat').doc(id).delete();
+							await deleteDoc(doc(db, 'chat', id));
 						} catch (error) {
 							Alert.alert('Error', 'Could not delete the chat. Please try again.');
 						}

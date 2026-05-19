@@ -11,10 +11,11 @@ import {
 	Keyboard,
 	Platform,
 } from 'react-native';
-import { Avatar, Input } from 'react-native-elements';
+import { Avatar, Input } from '@rneui/themed';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { db, firebase } from '../firebase/firebase';
-import TimeAgo from 'react-native-timeago';
+import { auth, db } from '../firebase/firebase';
+import { collection, doc, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { timeAgo } from '../utils/timeago';
 
 const ChatScreen = ({ navigation, route }) => {
 	// console.log('ChatScreen---------', route.params);
@@ -71,34 +72,32 @@ const ChatScreen = ({ navigation, route }) => {
 	}, [navigation, messages]);
 
 	useLayoutEffect(() => {
-		const unsubscribe = db
-			.collection('chat')
-			.doc(route.params.id)
-			.collection('messages')
-			.orderBy('timestamp', 'asc')
-			.onSnapshot((snapshot) =>
-				setMessages(
-					snapshot.docs.map((doc) => ({
-						id: doc.id,
-						data: doc.data(),
-					}))
-				)
-			);
+		const messagesRef = collection(db, 'chat', route.params.id, 'messages');
+		const q = query(messagesRef, orderBy('timestamp', 'asc'));
+		const unsubscribe = onSnapshot(q, (snapshot) =>
+			setMessages(
+				snapshot.docs.map((doc) => ({
+					id: doc.id,
+					data: doc.data(),
+				}))
+			)
+		);
 		return unsubscribe;
 	}, [route]);
 
 	const sendMessage = () => {
 		const trimmed = input.trim();
-		if (!trimmed) return; // No enviar mensajes vacíos
+		if (!trimmed) return;
 
 		Keyboard.dismiss();
 
-		db.collection('chat').doc(route.params.id).collection('messages').add({
-			timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+		const currentUser = auth.currentUser;
+		addDoc(collection(db, 'chat', route.params.id, 'messages'), {
+			timestamp: serverTimestamp(),
 			message: trimmed,
-			displayName: firebase.auth().currentUser.displayName,
-			email: firebase.auth().currentUser.email,
-			photoURL: firebase.auth().currentUser.photoURL,
+			displayName: currentUser.displayName,
+			email: currentUser.email,
+			photoURL: currentUser.photoURL,
 		});
 		setInput('');
 	};
@@ -113,11 +112,10 @@ const ChatScreen = ({ navigation, route }) => {
 			>
 				<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
 					{messages.map(({ id, data }) =>
-						data.email === firebase.auth().currentUser.email ? (
+						data.email === auth.currentUser?.email ? (
 							<View key={id} style={styles.receiver}>
 								<Avatar
 									source={{ uri: data.photoURL }}
-									position="absolute"
 									rounded
 									containerStyle={{
 										position: 'absolute',
@@ -128,17 +126,13 @@ const ChatScreen = ({ navigation, route }) => {
 								/>
 								<Text style={styles.receiverText}>{data.message}</Text>
 								<Text style={styles.receiverTimeago}>
-									<TimeAgo
-										time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
-										opts={{ minInterval: 60 }}
-									/>
+									{timeAgo(data.timestamp?.seconds)}
 								</Text>
 							</View>
 						) : (
 							<View key={id} style={styles.sender}>
 								<Avatar
 									source={{ uri: data.photoURL }}
-									position="absolute"
 									rounded
 									containerStyle={{
 										position: 'absolute',
@@ -149,10 +143,7 @@ const ChatScreen = ({ navigation, route }) => {
 								/>
 								<Text style={styles.senderText}>{data.message}</Text>
 								<Text style={styles.senderTimeago}>
-									<TimeAgo
-										time={new Date(data.timestamp ? data.timestamp.seconds : '') * 1000}
-										opts={{ minInterval: 60 }}
-									/>
+									{timeAgo(data.timestamp?.seconds)}
 								</Text>
 							</View>
 						)

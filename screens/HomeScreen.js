@@ -9,10 +9,12 @@ import {
 	Platform,
 	Dimensions,
 } from 'react-native';
-import { Avatar, ListItem } from 'react-native-elements';
+import { Avatar, ListItem } from '@rneui/themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomListItem from '../components/CustomListItem';
-import { firebase, db } from '../firebase/firebase';
+import { auth, db } from '../firebase/firebase';
+import { signOut } from 'firebase/auth';
+import { collection, onSnapshot } from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
 
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hora
@@ -23,7 +25,7 @@ const HomeScreen = ({ navigation }) => {
 	const backgroundTime = useRef(null);
 
 	const signOutUser = useCallback(async () => {
-		await firebase.auth().signOut();
+		await signOut(auth);
 		navigation.replace('Login');
 	}, [navigation]);
 
@@ -46,7 +48,7 @@ const HomeScreen = ({ navigation }) => {
 	}, [signOutUser]);
 
 	useEffect(() => {
-		const unsubscribe = db.collection('chat').onSnapshot((snapshot) => {
+		const unsubscribe = onSnapshot(collection(db, 'chat'), (snapshot) => {
 			setChats(
 				snapshot.docs.map((doc) => ({
 					id: doc.id,
@@ -76,11 +78,11 @@ const HomeScreen = ({ navigation }) => {
 						activeOpacity={0.5}
 						style={{ flexDirection: 'row', alignItems: 'center' }}
 					>
-						<Avatar rounded source={{ uri: firebase.auth().currentUser.photoURL }} />
+						<Avatar rounded source={{ uri: auth.currentUser?.photoURL }} />
 						<Text
 							style={{ fontWeight: Platform.OS === 'android' ? 'bold' : '800', color: '#83eaf1' }}
 						>
-							{firebase.auth().currentUser.displayName}
+							{auth.currentUser?.displayName}
 						</Text>
 					</TouchableOpacity>
 				</View>
