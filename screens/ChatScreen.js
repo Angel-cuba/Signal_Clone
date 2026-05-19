@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useState, useRef } from 'react';
 import {
 	Alert,
 	StyleSheet,
@@ -17,11 +17,21 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { timeAgo } from '../utils/timeago';
+import { useTheme } from '../hooks/useTheme';
+
+// Truncate chat name at 20 chars with ellipsis
+const truncateName = (name = '') =>
+	name.length > 20
+		? name[0].toUpperCase() + name.slice(1, 19).toLowerCase() + '…'
+		: name[0].toUpperCase() + name.slice(1).toLowerCase();
 
 const ChatScreen = ({ navigation, route }) => {
-	// console.log('ChatScreen---------', route.params);
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState([]);
+	const scrollViewRef = useRef(null);
+	const { colors, isDark } = useTheme();
+
+	// Header — does NOT depend on messages (content never changes with messages)
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: 'Chat',
@@ -46,8 +56,7 @@ const ChatScreen = ({ navigation, route }) => {
 							color: Platform.OS === 'android' ? '#deebdd' : '#f5f7fa',
 						}}
 					>
-						{route.params.chatName[0].toUpperCase() +
-							route.params.chatName.slice(1, 20).toLowerCase()}
+						{truncateName(route.params.chatName)}
 					</Text>
 				</View>
 			),
@@ -63,14 +72,13 @@ const ChatScreen = ({ navigation, route }) => {
 					<TouchableOpacity>
 						<FontAwesome name="video-camera" size={24} color="white" />
 					</TouchableOpacity>
-
 					<TouchableOpacity>
 						<Ionicons name="call" size={24} color="white" />
 					</TouchableOpacity>
 				</View>
 			),
 		});
-	}, [navigation, messages]);
+	}, [navigation]);
 
 	useLayoutEffect(() => {
 		const messagesRef = collection(db, 'chat', route.params.id, 'messages');
@@ -115,13 +123,19 @@ const ChatScreen = ({ navigation, route }) => {
 			<StatusBar style="light" />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-				style={styles.keyboard}
+				style={[styles.keyboard, { backgroundColor: colors.chatBackground }]}
 				keyboardVerticalOffset={Platform.select({ ios: 0, android: 80 })}
 			>
-				<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
+				<ScrollView
+					ref={scrollViewRef}
+					contentContainerStyle={{ paddingTop: 20 }}
+					onContentSizeChange={() =>
+						scrollViewRef.current?.scrollToEnd({ animated: true })
+					}
+				>
 					{messages.map(({ id, data }) =>
 						data.email === auth.currentUser?.email ? (
-							<View key={id} style={styles.receiver}>
+							<View key={id} style={[styles.receiver, { backgroundColor: colors.sentBubble }]}>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									rounded
@@ -132,13 +146,15 @@ const ChatScreen = ({ navigation, route }) => {
 									}}
 									size={30}
 								/>
-								<Text style={styles.receiverText}>{data.message}</Text>
-								<Text style={styles.receiverTimeago}>
+								<Text style={[styles.receiverText, { color: colors.sentText }]}>
+									{data.message}
+								</Text>
+								<Text style={[styles.receiverTimeago, { color: colors.timeago }]}>
 									{timeAgo(data.timestamp?.seconds)}
 								</Text>
 							</View>
 						) : (
-							<View key={id} style={styles.sender}>
+							<View key={id} style={[styles.sender, { backgroundColor: colors.receivedBubble }]}>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									rounded
@@ -149,22 +165,23 @@ const ChatScreen = ({ navigation, route }) => {
 									}}
 									size={30}
 								/>
-								<Text style={styles.senderText}>{data.message}</Text>
-								<Text style={styles.senderTimeago}>
+								<Text style={[styles.senderText, { color: colors.receivedText }]}>
+									{data.message}
+								</Text>
+								<Text style={[styles.senderTimeago, { color: colors.timeago }]}>
 									{timeAgo(data.timestamp?.seconds)}
 								</Text>
 							</View>
 						)
 					)}
 				</ScrollView>
-				<View style={styles.footer}>
+				<View style={[styles.footer, { backgroundColor: colors.footerBackground }]}>
 					<Input
-						placeholder="Write your message..."
+						placeholder="Write your message…"
 						value={input}
 						onChangeText={(text) => setInput(text)}
 						onSubmitEditing={sendMessage}
-						style={styles.textInput}
-						// underlineColorAndroid="transparent"
+						style={[styles.textInput, { backgroundColor: colors.inputBackground }]}
 					/>
 					<TouchableOpacity
 						style={{
@@ -177,13 +194,14 @@ const ChatScreen = ({ navigation, route }) => {
 						onPress={sendMessage}
 						disabled={!input.trim()}
 					>
-						<Ionicons name="send" size={Platform.isPad ? 45 : 40} color="navy" />
+						<Ionicons name="send" size={Platform.isPad ? 45 : 40} color={colors.primary} />
 					</TouchableOpacity>
 				</View>
 			</KeyboardAvoidingView>
 		</SafeAreaView>
 	);
 };
+
 export default ChatScreen;
 
 const styles = StyleSheet.create({
@@ -191,13 +209,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	keyboard: {
-		// flex: 1,
 		height: '100%',
-		...Platform.select({
-			ios: { backgroundColor: '#deebdd' },
-			android: { backgroundColor: '#d3d3d3' },
-			default: { backgroundColor: '#7f8c8d' },
-		}),
 	},
 	footer: {
 		flexDirection: 'row',
@@ -206,8 +218,6 @@ const styles = StyleSheet.create({
 		paddingTop: 15,
 		paddingRight: 55,
 		paddingBottom: Platform.OS === 'android' ? 1 : 0,
-		// 	paddingBottom: 15,
-		backgroundColor: 'rgba(0,0,0,.111)',
 	},
 	textInput: {
 		bottom: 10,
@@ -216,7 +226,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		marginRight: 15,
 		borderColor: 'transparent',
-		backgroundColor: '#bdd4e7',
 		padding: 10,
 		color: 'gray',
 		borderRadius: 30,
@@ -225,15 +234,9 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
 		marginLeft: 2,
-		...Platform.select({
-			ios: { color: '#b0f3f1' },
-			android: { color: '#d3d3d3' },
-			default: { color: '#7f8c8d' },
-		}),
 	},
 	receiver: {
 		padding: 15,
-		backgroundColor: '#2a2a72',
 		alignSelf: 'flex-end',
 		borderTopLeftRadius: 10,
 		borderBottomLeftRadius: 6,
@@ -252,13 +255,11 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 	},
 	senderText: {
-		color: Platform.OS === 'android' ? '#030202' : '#000c14',
 		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
 		fontSize: 16,
 	},
 	sender: {
 		padding: 15,
-		backgroundColor: '#8693ab',
 		alignSelf: 'flex-start',
 		borderRadius: 10,
 		marginLeft: 50,

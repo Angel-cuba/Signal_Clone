@@ -5,73 +5,90 @@ import { Button, Input, Image } from '@rneui/themed';
 import { auth } from '../firebase/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { AntDesign, Feather } from '@expo/vector-icons';
+import { useTheme } from '../hooks/useTheme';
 
 const LoginScreen = ({ navigation }) => {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const { colors, isDark } = useTheme();
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-			if (authUser) {
-				navigation.replace('Home');
-			}
+			if (authUser) navigation.replace('Home');
 		});
 		return unsubscribe;
 	}, []);
 
-	const SignIn = async () => {
+	const signIn = async () => {
 		if (!email.trim() || !password) {
 			return Alert.alert('Missing fields', 'Please enter your email and password.');
 		}
+		setLoading(true);
 		try {
 			await signInWithEmailAndPassword(auth, email.trim(), password);
+			// onAuthStateChanged handles navigation
 		} catch (error) {
 			Alert.alert('Sign in failed', error.message, [
 				{ text: 'OK', style: 'cancel' },
 				{ text: 'Create account', onPress: () => navigation.push('Register') },
 			]);
+		} finally {
+			setLoading(false);
 		}
 	};
 
 	return (
-		<KeyboardAvoidingView behavior="padding" style={styles.container}>
-			<StatusBar style="light" />
+		<KeyboardAvoidingView
+			behavior="padding"
+			style={[styles.container, { backgroundColor: colors.background }]}
+		>
+			<StatusBar style={isDark ? 'light' : 'dark'} />
 			<Image
 				source={require('../assets/icon.png')}
 				style={{ width: 200, height: 200 }}
 			/>
-			<View style={styles.InputContainer}>
+			<View style={styles.inputContainer}>
 				<Input
 					placeholder="Email"
 					autoFocus
 					autoCapitalize="none"
 					keyboardType="email-address"
 					value={email}
-					onChangeText={(text) => setEmail(text)}
+					onChangeText={setEmail}
+					disabled={loading}
 				/>
 				<Input
 					placeholder="Password"
 					secureTextEntry={!showPassword}
 					type="password"
 					value={password}
-					onChangeText={(text) => setPassword(text)}
+					onChangeText={setPassword}
+					onSubmitEditing={signIn}
+					disabled={loading}
 					rightIcon={
-						<TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+						<TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
 							{showPassword ? (
-								<AntDesign name="eye" size={24} color="black" />
+								<AntDesign name="eye" size={24} color={colors.subtext} />
 							) : (
-								<Feather name="eye-off" size={24} color="black" />
+								<Feather name="eye-off" size={24} color={colors.subtext} />
 							)}
 						</TouchableOpacity>
 					}
 				/>
 			</View>
-			<Button containerStyle={styles.button} onPress={SignIn} title="Login" />
+			<Button
+				containerStyle={styles.button}
+				onPress={signIn}
+				disabled={loading}
+				title={loading ? 'Logging in…' : 'Login'}
+			/>
 			<Button
 				onPress={() => navigation.navigate('Register')}
 				containerStyle={styles.button}
 				type="outline"
+				disabled={loading}
 				title="Register"
 			/>
 		</KeyboardAvoidingView>
@@ -87,7 +104,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		padding: 10,
 	},
-	InputContainer: {
+	inputContainer: {
 		width: 300,
 	},
 	button: {

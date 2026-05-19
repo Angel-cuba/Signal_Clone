@@ -9,6 +9,7 @@ import {
 	Platform,
 	Dimensions,
 } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 import { Avatar, ListItem } from '@rneui/themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomListItem from '../components/CustomListItem';
@@ -23,6 +24,7 @@ const HomeScreen = ({ navigation }) => {
 	const [chats, setChats] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const backgroundTime = useRef(null);
+	const { colors } = useTheme();
 
 	const signOutUser = useCallback(async () => {
 		await signOut(auth);
@@ -156,7 +158,7 @@ const HomeScreen = ({ navigation }) => {
 	);
 
 	return (
-		<SafeAreaView>
+		<SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
 			<ScrollView style={styles.scrollContainer}>
 				{loading
 					? [1, 2, 3].map((i) => <LoadingView key={i} id={i} />)
@@ -170,16 +172,32 @@ const HomeScreen = ({ navigation }) => {
 								enterChat={enterChat}
 							/>
 					  ))}
+
+				{!loading && chats.length === 0 && (
+					<View style={styles.emptyState}>
+						<LottieView
+							source={require('../assets/animations/21333-writer.json')}
+							autoPlay
+							style={{ height: 180 }}
+							speed={1}
+						/>
+						<Text style={[styles.emptyStateText, { color: colors.emptyStateText }]}>
+							No chats yet — tap "New chat" to start one!
+						</Text>
+					</View>
+				)}
 			</ScrollView>
 
-			<View style={styles.animation}>
-				<LottieView
-					style={{ height: chats.length > 7 ? 100 : 200 }}
-					source={require('../assets/animations/21333-writer.json')}
-					autoPlay
-					speed={2}
-				/>
-			</View>
+			{chats.length > 0 && (
+				<View style={styles.animation}>
+					<LottieView
+						style={{ height: chats.length > 7 ? 100 : 200 }}
+						source={require('../assets/animations/21333-writer.json')}
+						autoPlay
+						speed={2}
+					/>
+				</View>
+			)}
 		</SafeAreaView>
 	);
 };
@@ -190,11 +208,22 @@ const styles = StyleSheet.create({
 	scrollContainer: {
 		height: '100%',
 		width: Dimensions.get('window').width,
-		// backgroundColor: 'blue',
 	},
 	animation: {
 		position: 'absolute',
 		bottom: 10,
 		left: 10,
+		// Only rendered when chats.length > 0, so it won't overlap the empty state
+	},
+	emptyState: {
+		alignItems: 'center',
+		marginTop: 60,
+		paddingHorizontal: 30,
+	},
+	emptyStateText: {
+		textAlign: 'center',
+		fontSize: 16,
+		marginTop: 12,
+		fontWeight: Platform.OS === 'android' ? 'bold' : '600',
 	},
 });

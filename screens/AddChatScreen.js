@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { StyleSheet, Text, View, Alert, Image, Platform } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 import { Input, Button } from '@rneui/themed';
 import { auth, db } from '../firebase/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -12,6 +13,7 @@ const AddChatScreen = ({ navigation }) => {
 	const [chatName, setChatName] = useState('');
 	const [localImageUri, setLocalImageUri] = useState('');
 	const [loading, setLoading] = useState(false);
+	const { colors } = useTheme();
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
@@ -64,7 +66,7 @@ const AddChatScreen = ({ navigation }) => {
 
 	return (
 		<>
-			<View style={styles.container}>
+			<View style={[styles.container, { backgroundColor: colors.background }]}>
 				<Input
 					placeholder="Chat name"
 					value={chatName}
@@ -138,7 +140,6 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingVertical: 10,
 		paddingTop: 40,
-		backgroundColor: 'white',
 	},
 	buttonsGroup: {
 		marginVertical: 16,

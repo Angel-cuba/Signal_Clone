@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useLayoutEffect } from 'react';
 import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Image, Alert } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 import { Button, Input } from '@rneui/themed';
 import { auth } from '../firebase/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
@@ -17,6 +18,7 @@ const RegisterScreen = ({ navigation }) => {
 	const [password, setPassword] = useState('');
 	const [localImageUri, setLocalImageUri] = useState('');
 	const [loading, setLoading] = useState(false);
+	const { colors, isDark } = useTheme();
 
 	useLayoutEffect(() => {
 		navigation.setOptions({
@@ -55,7 +57,6 @@ const RegisterScreen = ({ navigation }) => {
 		} catch (error) {
 			Alert.alert('Registration failed', error.message, [
 				{ text: 'OK', style: 'cancel' },
-				{ text: 'Try again', onPress: () => navigation.push('Register') },
 			]);
 		} finally {
 			setLoading(false);
@@ -74,10 +75,24 @@ const RegisterScreen = ({ navigation }) => {
 
 	return (
 		<>
-			<KeyboardAvoidingView behavior="padding" style={styles.container}>
-				<StatusBar style="light" />
+			<KeyboardAvoidingView
+				behavior="padding"
+				style={[styles.container, { backgroundColor: colors.background }]}
+			>
+				<StatusBar style={isDark ? 'light' : 'dark'} />
 
-				<Text style={styles.titleText}>Create a new account</Text>
+				<Text
+					style={[
+						styles.titleText,
+						{
+							color: Platform.OS === 'android'
+								? colors.titleColorAndroid
+								: colors.titleColor,
+						},
+					]}
+				>
+					Create a new account
+				</Text>
 
 				<View style={styles.inputContainer}>
 					<Input
@@ -155,7 +170,6 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 		padding: 10,
-		backgroundColor: 'white',
 	},
 	imagePreview: {
 		alignItems: 'center',
@@ -172,7 +186,6 @@ const styles = StyleSheet.create({
 		marginBottom: 50,
 		fontSize: 30,
 		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-		color: Platform.OS === 'android' ? '#1e3b70' : '#29539b',
 	},
 	buttonsGroup: {
 		marginVertical: 10,

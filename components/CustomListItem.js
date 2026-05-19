@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 import { ListItem, Avatar } from '@rneui/themed';
 import { auth, db } from '../firebase/firebase';
 import {
@@ -11,6 +12,7 @@ import { AntDesign } from '@expo/vector-icons';
 
 const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 	const [chatMessage, setChatMessage] = useState([]);
+	const { colors } = useTheme();
 
 	useEffect(() => {
 		const messagesRef = collection(db, 'chat', id, 'messages');
@@ -20,7 +22,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 			setChatMessage(snapshot.docs.map((doc) => doc.data()))
 		);
 		return unsubscribe;
-	}, []);
+	}, [id]);
 
 	// Null-safe: currentUser puede ser null durante la transición de auth al arrancar en frío
 	const currentUser = auth.currentUser?.uid ?? null;
@@ -64,7 +66,11 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 			: chatName[0].toUpperCase() + chatName.slice(1).toLowerCase();
 
 	return (
-		<ListItem onPress={() => enterChat(id, chatName, image, userId)} bottomDivider>
+		<ListItem
+			onPress={() => enterChat(id, chatName, image, userId)}
+			bottomDivider
+			containerStyle={{ backgroundColor: colors.background }}
+		>
 			{chatMessage[0] ? (
 				<Avatar
 					rounded
@@ -82,7 +88,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 			<ListItem.Content>
 				<ListItem.Title
 					style={{
-						color: '#2c3e50',
+						color: colors.text,
 						fontWeight: Platform.OS === 'android' ? 'bold' : '700',
 					}}
 					numberOfLines={1}
@@ -90,11 +96,16 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 				>
 					{displayName}
 				</ListItem.Title>
-				<ListItem.Subtitle numberOfLines={1} ellipsizeMode="tail">
+				<ListItem.Subtitle
+					style={{ color: colors.subtext }}
+					numberOfLines={1}
+					ellipsizeMode="tail"
+				>
 					{chatMessage[0] ? (
 						<Text
 							style={{
 								fontWeight: Platform.OS === 'android' ? 'bold' : '600',
+								color: colors.subtext,
 							}}
 						>
 							{chatMessage[0].displayName}
