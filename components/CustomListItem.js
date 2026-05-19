@@ -19,7 +19,8 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 		return unsubscribe;
 	}, []);
 
-	const currentUser = firebase.auth().currentUser.uid;
+	// Null-safe: currentUser puede ser null durante la transición de auth al arrancar en frío
+	const currentUser = firebase.auth().currentUser?.uid ?? null;
 
 	const deleteChatRoom = () => {
 		Alert.alert(
@@ -32,14 +33,17 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 					style: 'destructive',
 					onPress: async () => {
 						try {
-							// Borrar todos los mensajes de la subcolección primero
+							// Firestore limita a 500 escrituras por batch — chunkeamos para chats grandes
+							const BATCH_SIZE = 499;
 							const messagesRef = db.collection('chat').doc(id).collection('messages');
 							const snapshot = await messagesRef.get();
-							const batch = db.batch();
-							snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-							await batch.commit();
 
-							// Luego borrar el documento del chat
+							for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+								const batch = db.batch();
+								snapshot.docs.slice(i, i + BATCH_SIZE).forEach((doc) => batch.delete(doc.ref));
+								await batch.commit();
+							}
+
 							await db.collection('chat').doc(id).delete();
 						} catch (error) {
 							Alert.alert('Error', 'Could not delete the chat. Please try again.');
@@ -97,7 +101,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 					{chatMessage[0] ? chatMessage[0].message : null}
 				</ListItem.Subtitle>
 			</ListItem.Content>
-			{currentUser === userId && (
+			{currentUser && currentUser === userId && (
 				<TouchableOpacity style={styles.delete} onPress={deleteChatRoom}>
 					<AntDesign name="delete" size={26} color="red" />
 				</TouchableOpacity>
@@ -109,9 +113,6 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 export default CustomListItem;
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
 	delete: {
 		marginRight: 20,
 	},

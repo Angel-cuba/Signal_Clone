@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import React, { useLayoutEffect, useState } from 'react';
 import {
 	StyleSheet,
@@ -6,14 +7,12 @@ import {
 	TouchableOpacity,
 	SafeAreaView,
 	KeyboardAvoidingView,
-	StatusBar,
 	ScrollView,
 	Keyboard,
-	TouchableWithoutFeedback,
 	Platform,
 } from 'react-native';
 import { Avatar, Input } from 'react-native-elements';
-import { AntDesign, FontAwesome, Ionicons } from '@expo/vector-icons';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { db, firebase } from '../firebase/firebase';
 import TimeAgo from 'react-native-timeago';
 
@@ -112,8 +111,6 @@ const ChatScreen = ({ navigation, route }) => {
 				style={styles.keyboard}
 				keyboardVerticalOffset={Platform.select({ ios: 0, android: 80 })}
 			>
-				{/* <TouchableWithoutFeedback> */}
-				{/* <> */}
 				<ScrollView contentContainerStyle={{ paddingTop: 20 }}>
 					{messages.map(({ id, data }) =>
 						data.email === firebase.auth().currentUser.email ? (
@@ -184,13 +181,10 @@ const ChatScreen = ({ navigation, route }) => {
 						<Ionicons name="send" size={Platform.isPad ? 45 : 40} color="navy" />
 					</TouchableOpacity>
 				</View>
-				{/* </> */}
-				{/* </TouchableWithoutFeedback> */}
 			</KeyboardAvoidingView>
 		</SafeAreaView>
 	);
 };
-// //#e7d6e3
 export default ChatScreen;
 
 const styles = StyleSheet.create({

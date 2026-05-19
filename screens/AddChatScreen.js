@@ -2,10 +2,10 @@ import React, { useLayoutEffect, useState } from 'react';
 import { StyleSheet, Text, View, Alert, Image, Platform } from 'react-native';
 import { Input, Button } from 'react-native-elements';
 import { db, firebase } from '../firebase/firebase';
-import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import LottieView from 'lottie-react-native';
 import { uploadImageToStorage } from '../utils/uploadImage';
+import { pickImageFromCamera, pickImageFromGallery } from '../utils/pickImage';
 
 const AddChatScreen = ({ navigation }) => {
 	const [chatName, setChatName] = useState('');
@@ -51,42 +51,14 @@ const AddChatScreen = ({ navigation }) => {
 		}
 	};
 
-	const pickImageWithCamera = async () => {
-		if (Platform.OS !== 'web') {
-			const { status } = await ImagePicker.requestCameraPermissionsAsync();
-			if (status !== 'granted') {
-				Alert.alert('Permission required', 'Camera access is needed to add a chat image.');
-				return;
-			}
-		}
-		const result = await ImagePicker.launchCameraAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.Images,
-			allowsEditing: true,
-			aspect: [1, 1],
-			quality: 0.7,
-		});
-		if (!result.cancelled) {
-			setLocalImageUri(result.uri);
-		}
+	const handlePickCamera = async () => {
+		const uri = await pickImageFromCamera('Camera access is needed to add a chat image.');
+		if (uri) setLocalImageUri(uri);
 	};
 
-	const pickImageFromGallery = async () => {
-		if (Platform.OS !== 'web') {
-			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-			if (status !== 'granted') {
-				Alert.alert('Permission required', 'Gallery access is needed to select a chat image.');
-				return;
-			}
-		}
-		const result = await ImagePicker.launchImageLibraryAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.Images,
-			allowsEditing: true,
-			aspect: [1, 1],
-			quality: 0.7,
-		});
-		if (!result.cancelled) {
-			setLocalImageUri(result.uri);
-		}
+	const handlePickGallery = async () => {
+		const uri = await pickImageFromGallery('Gallery access is needed to select a chat image.');
+		if (uri) setLocalImageUri(uri);
 	};
 
 	return (
@@ -118,12 +90,12 @@ const AddChatScreen = ({ navigation }) => {
 								speed={0.8}
 							/>
 						}
-						onPress={pickImageWithCamera}
+						onPress={handlePickCamera}
 						title="Camera"
 					/>
 					<Button
 						raised
-						onPress={pickImageFromGallery}
+						onPress={handlePickGallery}
 						icon={
 							<LottieView
 								style={{ height: 29 }}

@@ -45,7 +45,8 @@ const LoginScreen = ({ navigation }) => {
 				<Input
 					placeholder="Email"
 					autoFocus
-					type="email"
+					autoCapitalize="none"
+					keyboardType="email-address"
 					value={email}
 					onChangeText={(text) => setEmail(text)}
 				/>

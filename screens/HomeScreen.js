@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useState, useEffect, useRef, useCallback } from 'react';
 import {
 	AppState,
 	ScrollView,
@@ -22,10 +22,10 @@ const HomeScreen = ({ navigation }) => {
 	const [loading, setLoading] = useState(true);
 	const backgroundTime = useRef(null);
 
-	const signOutUser = async () => {
+	const signOutUser = useCallback(async () => {
 		await firebase.auth().signOut();
 		navigation.replace('Login');
-	};
+	}, [navigation]);
 
 	// Manejo de sesión con AppState — detecta cuando la app vuelve del background
 	useEffect(() => {
@@ -43,7 +43,7 @@ const HomeScreen = ({ navigation }) => {
 
 		const subscription = AppState.addEventListener('change', handleAppStateChange);
 		return () => subscription.remove();
-	}, []);
+	}, [signOutUser]);
 
 	useEffect(() => {
 		const unsubscribe = db.collection('chat').onSnapshot((snapshot) => {
@@ -99,12 +99,11 @@ const HomeScreen = ({ navigation }) => {
 				>
 					<Text
 						style={{
-							fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
 							color: '#000',
 							position: 'absolute',
 							left: -14,
 							bottom: Platform.isPad ? 24 : 16,
-							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
 						}}
 					>
 						New
@@ -120,12 +119,11 @@ const HomeScreen = ({ navigation }) => {
 					</TouchableOpacity>
 					<Text
 						style={{
-							fontWeight: Platform.OS === 'android' ? 'bold' : '700',
+							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
 							color: '#000',
 							position: 'absolute',
 							right: -14,
 							bottom: Platform.isPad ? 24 : 16,
-							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
 						}}
 					>
 						chat

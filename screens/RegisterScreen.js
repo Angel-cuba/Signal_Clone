@@ -4,9 +4,9 @@ import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Image, Alert } 
 import { Button, Input } from 'react-native-elements';
 import { firebase } from '../firebase/firebase';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
-import * as ImagePicker from 'expo-image-picker';
 import LottieView from 'lottie-react-native';
 import { uploadImageToStorage } from '../utils/uploadImage';
+import { pickImageFromCamera, pickImageFromGallery } from '../utils/pickImage';
 
 const DEFAULT_AVATAR = 'https://res.cloudinary.com/dqaerysgb/image/upload/v1630358737/jooly8uzpykfvixik2vv.jpg';
 
@@ -50,6 +50,7 @@ const RegisterScreen = ({ navigation }) => {
 				displayName: name.trim(),
 				photoURL,
 			});
+			navigation.replace('Home');
 		} catch (error) {
 			Alert.alert('Registration failed', error.message, [
 				{ text: 'OK', style: 'cancel' },
@@ -60,42 +61,14 @@ const RegisterScreen = ({ navigation }) => {
 		}
 	};
 
-	const pickImageWithCamera = async () => {
-		if (Platform.OS !== 'web') {
-			const { status } = await ImagePicker.requestCameraPermissionsAsync();
-			if (status !== 'granted') {
-				Alert.alert('Permission required', 'Camera access is needed to take a profile picture.');
-				return;
-			}
-		}
-		const result = await ImagePicker.launchCameraAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.Images,
-			allowsEditing: true,
-			aspect: [1, 1],
-			quality: 0.7,
-		});
-		if (!result.cancelled) {
-			setLocalImageUri(result.uri);
-		}
+	const handlePickCamera = async () => {
+		const uri = await pickImageFromCamera('Camera access is needed to take a profile picture.');
+		if (uri) setLocalImageUri(uri);
 	};
 
-	const pickImageFromGallery = async () => {
-		if (Platform.OS !== 'web') {
-			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-			if (status !== 'granted') {
-				Alert.alert('Permission required', 'Gallery access is needed to select a profile picture.');
-				return;
-			}
-		}
-		const result = await ImagePicker.launchImageLibraryAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.Images,
-			allowsEditing: true,
-			aspect: [1, 1],
-			quality: 0.7,
-		});
-		if (!result.cancelled) {
-			setLocalImageUri(result.uri);
-		}
+	const handlePickGallery = async () => {
+		const uri = await pickImageFromGallery('Gallery access is needed to select a profile picture.');
+		if (uri) setLocalImageUri(uri);
 	};
 
 	return (
@@ -137,12 +110,12 @@ const RegisterScreen = ({ navigation }) => {
 				<View style={styles.buttonsGroup}>
 					<Button
 						icon={<Icon name="camera" size={22} color="black" />}
-						onPress={pickImageWithCamera}
+						onPress={handlePickCamera}
 						title="Camera"
 					/>
 					<Button
 						raised
-						onPress={pickImageFromGallery}
+						onPress={handlePickGallery}
 						icon={<Icon name="cellphone-arrow-down" size={22} color="black" />}
 						title="Gallery"
 					/>
@@ -184,10 +157,6 @@ const styles = StyleSheet.create({
 	imagePreview: {
 		alignItems: 'center',
 		marginBottom: 10,
-	},
-	button: {
-		width: 200,
-		marginTop: 10,
 	},
 	registerButton: {
 		width: 200,
