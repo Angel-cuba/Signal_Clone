@@ -4,6 +4,7 @@
     "slug": "signal-clon",
     "version": "1.0.0",
     "orientation": "portrait",
+    "newArchEnabled": false,
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
     "splash": {

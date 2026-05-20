@@ -9,12 +9,18 @@ import AddChatScreen from './screens/AddChatScreen';
 import ChatScreen from './screens/ChatScreen';
 
 // Configure the global notification handler once at app startup.
-// This ensures notifications are shown as alerts even when the app is foregrounded,
+// This ensures notifications are shown when the app is foregrounded,
 // regardless of which screen is active. Placing it here (module scope, entry point)
 // avoids re-registration on screen navigations or Fast Refresh reloads.
+//
+// expo-notifications 0.32 (SDK 54): shouldShowAlert was split into:
+//   shouldShowBanner — the drop-down banner while the app is open
+//   shouldShowList  — the entry in Notification Center / shade
+// Both must be true to match the old shouldShowAlert: true behavior.
 Notifications.setNotificationHandler({
 	handleNotification: async () => ({
-		shouldShowAlert: true,
+		shouldShowBanner: true,
+		shouldShowList: true,
 		shouldPlaySound: true,
 		shouldSetBadge: true,
 	}),

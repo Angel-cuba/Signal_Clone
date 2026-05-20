@@ -6,13 +6,13 @@ import {
 	Text,
 	View,
 	TouchableOpacity,
-	SafeAreaView,
 	KeyboardAvoidingView,
 	ScrollView,
 	Keyboard,
 	Platform,
 	ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Input } from '@rneui/themed';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase/firebase';
