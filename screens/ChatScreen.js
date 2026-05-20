@@ -43,6 +43,11 @@ const ChatScreen = ({ navigation, route }) => {
 	const scrollViewRef = useRef(null);
 	const hasScrolledInitially = useRef(false);
 	const typingTimerRef = useRef(null);
+	const typingExpiryRef = useRef(null);
+	// isPaginatingRef: suppress auto-scroll when the user explicitly loads older messages
+	const isPaginatingRef = useRef(false);
+	// isNearBottomRef: only auto-scroll on new messages when the user is near the bottom
+	const isNearBottomRef = useRef(true);
 	const { colors } = useTheme();
 
 	const chatId = route.params.id;
@@ -125,7 +130,11 @@ const ChatScreen = ({ navigation, route }) => {
 
 		const unsubscribe = onSnapshot(chatRef, (snapshot) => {
 			const data = snapshot.data();
-			if (!data?.typingUsers) { setOtherTyping(null); return; }
+			if (!data?.typingUsers) {
+				setOtherTyping(null);
+				clearTimeout(typingExpiryRef.current);
+				return;
+			}
 
 			const uid = auth.currentUser?.uid;
 			const now = Date.now();
@@ -135,13 +144,25 @@ const ChatScreen = ({ navigation, route }) => {
 				const millis = ts?.toMillis?.();
 				return millis != null && millis > now - TYPING_TTL_MS;
 			});
-			setOtherTyping(entry ? (data.typingNames?.[entry[0]] ?? 'Someone') : null);
+
+			clearTimeout(typingExpiryRef.current);
+			if (entry) {
+				setOtherTyping(data.typingNames?.[entry[0]] ?? 'Someone');
+				// Local expiry timer: clear the indicator when the TTL elapses without
+				// a new Firestore event (e.g. peer stops typing and navigates away).
+				const millis = entry[1]?.toMillis?.();
+				const remaining = millis != null ? Math.max(0, TYPING_TTL_MS - (now - millis)) : TYPING_TTL_MS;
+				typingExpiryRef.current = setTimeout(() => setOtherTyping(null), remaining);
+			} else {
+				setOtherTyping(null);
+			}
 		});
 
 		return () => {
-			// FIX: cancel the debounce timer BEFORE the deleteField write so the
-			// timer callback can't re-set typingUsers after the cleanup deletes it.
+			// Cancel the debounce timer BEFORE the deleteField write so the timer
+			// callback can't re-set typingUsers after the cleanup deletes it.
 			clearTimeout(typingTimerRef.current);
+			clearTimeout(typingExpiryRef.current);
 			unsubscribe();
 			const uid = auth.currentUser?.uid;
 			if (uid) {
@@ -155,10 +176,17 @@ const ChatScreen = ({ navigation, route }) => {
 
 	// ── Auto-scroll ───────────────────────────────────────────────────────────
 	const handleContentSizeChange = useCallback(() => {
+		// When the user tapped "Load earlier messages", suppress the scroll so the
+		// viewport stays anchored near the message they were reading.
+		if (isPaginatingRef.current) {
+			isPaginatingRef.current = false;
+			return;
+		}
 		if (!hasScrolledInitially.current) {
 			scrollViewRef.current?.scrollToEnd({ animated: false });
 			hasScrolledInitially.current = true;
-		} else {
+		} else if (isNearBottomRef.current) {
+			// Only follow new messages when the user is already near the bottom.
 			scrollViewRef.current?.scrollToEnd({ animated: true });
 		}
 	}, []);
@@ -166,6 +194,7 @@ const ChatScreen = ({ navigation, route }) => {
 	// ── Load earlier messages ─────────────────────────────────────────────────
 	const loadMore = useCallback(() => {
 		if (!hasMore || loadingMore) return;
+		isPaginatingRef.current = true; // suppress next auto-scroll
 		setLoadingMore(true);
 		setPageSize((p) => p + PAGE_SIZE);
 	}, [hasMore, loadingMore]);
@@ -223,6 +252,7 @@ const ChatScreen = ({ navigation, route }) => {
 				message: trimmed,
 				displayName: currentUser.displayName,
 				email: currentUser.email,
+				uid: currentUser.uid,
 				photoURL: currentUser.photoURL,
 			});
 		} catch {
@@ -243,6 +273,13 @@ const ChatScreen = ({ navigation, route }) => {
 					ref={scrollViewRef}
 					contentContainerStyle={{ paddingTop: 20 }}
 					onContentSizeChange={handleContentSizeChange}
+					maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+					onScroll={({ nativeEvent }) => {
+						const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+						isNearBottomRef.current =
+							contentOffset.y >= contentSize.height - layoutMeasurement.height - 100;
+					}}
+					scrollEventThrottle={200}
 				>
 					{hasMore && (
 						<TouchableOpacity
@@ -309,6 +346,7 @@ const ChatScreen = ({ navigation, route }) => {
 						value={input}
 						onChangeText={handleInputChange}
 						onSubmitEditing={sendMessage}
+						maxLength={2000}
 						style={[styles.textInput, {
 							backgroundColor: colors.inputBackground,
 							color: colors.inputText,

@@ -10,6 +10,7 @@ import {
 	Platform,
 } from 'react-native';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import { useTheme } from '../hooks/useTheme';
 import { Avatar, ListItem } from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,9 +82,10 @@ const HomeScreen = ({ navigation }) => {
 
 	// ── Push notification setup ───────────────────────────────────────────────
 	useEffect(() => {
-		let notifSubscription;
-
 		const registerPushToken = async () => {
+			// Push tokens are only available on physical devices — skip simulators.
+			if (!Device.isDevice) return;
+
 			try {
 				const { status: existing } = await Notifications.getPermissionsAsync();
 				let finalStatus = existing;
@@ -125,14 +127,6 @@ const HomeScreen = ({ navigation }) => {
 		};
 
 		registerPushToken();
-
-		// Handle notifications received while the app is open
-		notifSubscription = Notifications.addNotificationReceivedListener(() => {
-			// Notification already shown via setNotificationHandler.
-			// Could increment a local badge counter here if needed.
-		});
-
-		return () => notifSubscription?.remove();
 	}, []);
 
 	// ── Header ────────────────────────────────────────────────────────────────
@@ -275,7 +269,7 @@ const HomeScreen = ({ navigation }) => {
 			</ScrollView>
 
 			{filteredChats.length > 0 && !searchQuery.trim() && (
-				<View style={styles.animation}>
+				<View style={styles.animation} pointerEvents="none">
 					<LottieView
 						style={{ height: filteredChats.length > 7 ? 100 : 200 }}
 						source={require('../assets/animations/21333-writer.json')}

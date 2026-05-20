@@ -9,6 +9,6 @@
  */
 export const truncateName = (name = '') => {
 	if (!name) return '';
-	const normalized = name[0].toUpperCase() + name.slice(1).toLowerCase();
+	const normalized = name[0].toUpperCase() + name.slice(1);
 	return normalized.length > 20 ? normalized.slice(0, 19) + '…' : normalized;
 };

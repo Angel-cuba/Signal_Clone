@@ -13,6 +13,8 @@
     "@rneui/themed": "^4.0.0-rc.8",
     "dayjs": "^1.11.13",
     "expo": "~53.0.0",
+    "expo-constants": "~17.1.8",
+    "expo-device": "~7.1.4",
     "expo-image-picker": "~16.0.6",
     "expo-notifications": "~0.29.14",
     "expo-status-bar": "~2.2.3",

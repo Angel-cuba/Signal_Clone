@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { ListItem, Avatar } from '@rneui/themed';
@@ -29,9 +29,17 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image, lastRead, typi
 	const currentUid = auth.currentUser?.uid ?? null;
 
 	// ── Typing indicator ──────────────────────────────────────────────────────
-	// Re-computed when typingUsers prop changes (HomeScreen's onSnapshot fires on every update)
-	const typerName = useMemo(() => {
-		if (!typingUsers || !currentUid) return null;
+	// Uses state + a local expiry timer so the indicator clears after TYPING_TTL_MS
+	// even when no new Firestore snapshot arrives (e.g. peer stops typing and leaves).
+	const [typerName, setTyperName] = useState(null);
+	const typerExpiryRef = useRef(null);
+
+	useEffect(() => {
+		clearTimeout(typerExpiryRef.current);
+		if (!typingUsers || !currentUid) {
+			setTyperName(null);
+			return;
+		}
 		const now = Date.now();
 		// Guard: serverTimestamp() pending writes return null from toMillis()
 		const entry = Object.entries(typingUsers).find(([uid, ts]) => {
@@ -39,7 +47,15 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image, lastRead, typi
 			const millis = ts?.toMillis?.();
 			return millis != null && millis > now - TYPING_TTL_MS;
 		});
-		return entry ? (typingNames?.[entry[0]] ?? 'Someone') : null;
+		if (entry) {
+			setTyperName(typingNames?.[entry[0]] ?? 'Someone');
+			const millis = entry[1]?.toMillis?.();
+			const remaining = millis != null ? Math.max(0, TYPING_TTL_MS - (now - millis)) : TYPING_TTL_MS;
+			typerExpiryRef.current = setTimeout(() => setTyperName(null), remaining);
+		} else {
+			setTyperName(null);
+		}
+		return () => clearTimeout(typerExpiryRef.current);
 	}, [typingUsers, typingNames, currentUid]);
 
 	// ── Unread badge ──────────────────────────────────────────────────────────

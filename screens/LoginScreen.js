@@ -22,7 +22,7 @@ const LoginScreen = ({ navigation }) => {
 			if (authUser) navigation.replace('Home');
 		});
 		return unsubscribe;
-	}, []);
+	}, [navigation]);
 
 	const signIn = async () => {
 		if (!email.trim() || !password) {

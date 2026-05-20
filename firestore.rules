@@ -46,8 +46,11 @@ service cloud.firestore {
                       && request.resource.data.message is string
                       && request.resource.data.message.size() > 0
                       && request.resource.data.message.size() <= 2000;
+        // uid is preferred (stored since Phase 4 self-review fix);
+        // email fallback retains delete rights for messages written before the uid field was added.
         allow delete: if isAuthenticated()
-                      && resource.data.email == request.auth.token.email;
+                      && (resource.data.uid == request.auth.uid
+                          || resource.data.email == request.auth.token.email);
         allow update: if false; // messages are immutable
       }
     }
