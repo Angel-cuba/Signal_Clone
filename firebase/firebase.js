@@ -1,7 +1,8 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   FIREBASE_API_KEY,
@@ -21,10 +22,22 @@ const firebaseConfig = {
   appId: FIREBASE_APP_ID,
 };
 
-// Previene double-init en Expo Fast Refresh
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Capturamos getApps() ANTES de initializeApp para detectar correctamente
+// los Fast Refresh de Expo: en el primer arranque la lista está vacía y
+// llamamos initializeAuth; en recargas posteriores la app ya existe y
+// sólo recuperamos la instancia con getAuth para evitar "already-initialized".
+// initializeAuth registra el componente de Auth en Hermes + New Architecture,
+// evitando "Component auth has not been registered yet".
+// getReactNativePersistence garantiza que la sesión sobreviva reinicios.
+const apps = getApps();
+const app = apps.length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-const auth = getAuth(app);
+const auth = apps.length === 0
+  ? initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    })
+  : getAuth(app);
+
 const db = getFirestore(app);
 const storage = getStorage(app);
 
