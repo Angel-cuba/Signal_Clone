@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+// getAuth is used in the Fast Refresh branch — do not remove.
 import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -22,21 +23,31 @@ const firebaseConfig = {
   appId: FIREBASE_APP_ID,
 };
 
-// Capturamos getApps() ANTES de initializeApp para detectar correctamente
-// los Fast Refresh de Expo: en el primer arranque la lista está vacía y
-// llamamos initializeAuth; en recargas posteriores la app ya existe y
-// sólo recuperamos la instancia con getAuth para evitar "already-initialized".
-// initializeAuth registra el componente de Auth en Hermes + New Architecture,
-// evitando "Component auth has not been registered yet".
-// getReactNativePersistence garantiza que la sesión sobreviva reinicios.
+// Firebase JS SDK v10 usa registro lazy de componentes.
+// initializeAuth debe llamarse al menos una vez para registrar el proveedor
+// de Auth en la app con persistencia explícita (no hay default en React Native).
+// Sin esto, getAuth() lanza "Component auth has not been registered yet" en
+// Hermes + New Architecture porque _getProvider('auth') no encuentra el proveedor.
+//
+// Expo Fast Refresh re-evalúa módulos JS sin reiniciar el runtime nativo.
+// Si llamáramos initializeApp/initializeAuth en cada evaluación, lanzarían
+// "already-initialized". Estrategia:
+//   — Snapshot de getApps() ANTES de initializeApp.
+//   — Primer arranque: lista vacía → llamar initializeApp + initializeAuth.
+//   — Fast Refresh: lista no vacía → getApp() + getAuth() para recuperar instancias.
+//   — try/catch como fallback por si el registro de app y auth se desincroniza.
 const apps = getApps();
 const app = apps.length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-const auth = apps.length === 0
-  ? initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    })
-  : getAuth(app);
+let auth;
+try {
+  auth = apps.length === 0
+    ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
+    : getAuth(app);
+} catch {
+  // Fallback: auth ya fue inicializado (evaluación doble de módulo en Fast Refresh)
+  auth = getAuth(app);
+}
 
 const db = getFirestore(app);
 const storage = getStorage(app);
