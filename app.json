@@ -19,11 +19,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "infoPlist": {
-        "NSUserNotificationsUsageDescription": "Signal Clone needs notification permission to alert you when new messages arrive."
-      }
+      "bundleIdentifier": "com.yourcompany.signalclone"
     },
     "android": {
+      "package": "com.yourcompany.signalclone",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -41,6 +40,11 @@
           "defaultChannel": "messages"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR-EAS-PROJECT-ID"
+      }
+    }
   }
 }

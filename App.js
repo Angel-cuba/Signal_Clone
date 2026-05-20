@@ -1,6 +1,19 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
+
+// Configure the global notification handler once at app startup.
+// This ensures notifications are shown as alerts even when the app is foregrounded,
+// regardless of which screen is active. Placing it here (module scope, entry point)
+// avoids re-registration on screen navigations or Fast Refresh reloads.
+Notifications.setNotificationHandler({
+	handleNotification: async () => ({
+		shouldShowAlert: true,
+		shouldPlaySound: true,
+		shouldSetBadge: true,
+	}),
+});
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';

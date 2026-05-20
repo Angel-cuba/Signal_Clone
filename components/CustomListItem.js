@@ -10,10 +10,7 @@ import {
 import LottieView from 'lottie-react-native';
 import { AntDesign } from '@expo/vector-icons';
 import { truncateName } from '../utils/truncateName';
-
-// A peer is "typing" if their timestamp is within this window.
-// Must match the TTL used in ChatScreen.
-const TYPING_TTL_MS = 5000;
+import { TYPING_TTL_MS } from '../constants/chat';
 
 const CustomListItem = ({ id, chatName, enterChat, userId, image, lastRead, typingUsers, typingNames }) => {
 	const [chatMessage, setChatMessage] = useState([]);
@@ -36,9 +33,12 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image, lastRead, typi
 	const typerName = useMemo(() => {
 		if (!typingUsers || !currentUid) return null;
 		const now = Date.now();
-		const entry = Object.entries(typingUsers).find(
-			([uid, ts]) => uid !== currentUid && ts?.toMillis?.() > now - TYPING_TTL_MS
-		);
+		// Guard: serverTimestamp() pending writes return null from toMillis()
+		const entry = Object.entries(typingUsers).find(([uid, ts]) => {
+			if (uid === currentUid) return false;
+			const millis = ts?.toMillis?.();
+			return millis != null && millis > now - TYPING_TTL_MS;
+		});
 		return entry ? (typingNames?.[entry[0]] ?? 'Someone') : null;
 	}, [typingUsers, typingNames, currentUid]);
 
@@ -47,8 +47,11 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image, lastRead, typi
 	const hasUnread = useMemo(() => {
 		if (!currentUid || !chatMessage[0]?.timestamp) return false;
 		if (!lastRead?.[currentUid]) return true; // never read this chat
-		const msgTs = chatMessage[0].timestamp?.seconds ?? 0;
-		const readTs = lastRead[currentUid]?.seconds ?? 0;
+		const msgTs = chatMessage[0].timestamp?.seconds;
+		const readTs = lastRead[currentUid]?.seconds;
+		// Guard: serverTimestamp() pending writes return null for .seconds.
+		// Returning false avoids a false-positive badge during the write round-trip.
+		if (msgTs == null || readTs == null) return false;
 		return msgTs > readTs;
 	}, [chatMessage, lastRead, currentUid]);
 

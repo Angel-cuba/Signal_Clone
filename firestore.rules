@@ -15,7 +15,12 @@ service cloud.firestore {
     // are written by ALL participants — not just the chat creator.
     function isPresenceUpdate() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return changed.hasOnly(['typingUsers', 'typingNames', 'lastRead']);
+      // Only the three presence keys may be touched
+      return changed.hasOnly(['typingUsers', 'typingNames', 'lastRead'])
+        // Each key that IS being changed must be a map (prevents scalar injection)
+        && (!changed.hasAll(['typingUsers']) || request.resource.data.typingUsers is map)
+        && (!changed.hasAll(['typingNames']) || request.resource.data.typingNames is map)
+        && (!changed.hasAll(['lastRead'])    || request.resource.data.lastRead    is map);
     }
 
     match /chat/{chatId} {

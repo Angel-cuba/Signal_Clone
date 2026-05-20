@@ -8,8 +8,8 @@ import {
 	TouchableOpacity,
 	View,
 	Platform,
-	Dimensions,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useTheme } from '../hooks/useTheme';
 import { Avatar, ListItem } from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,14 +21,8 @@ import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
 import * as Notifications from 'expo-notifications';
 
-// Show notifications even when the app is in the foreground
-Notifications.setNotificationHandler({
-	handleNotification: async () => ({
-		shouldShowAlert: true,
-		shouldPlaySound: true,
-		shouldSetBadge: true,
-	}),
-});
+// Note: Notifications.setNotificationHandler is configured once in App.js
+// (module scope at the entry point) to avoid re-registration on re-renders.
 
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 
@@ -101,9 +95,13 @@ const HomeScreen = ({ navigation }) => {
 
 				if (finalStatus !== 'granted') return; // user declined
 
-				// getExpoPushTokenAsync requires an EAS projectId in production.
-				// In Expo Go / development builds it works without one.
-				const tokenData = await Notifications.getExpoPushTokenAsync();
+				// projectId is required in standalone/production builds (EAS).
+				// In Expo Go it is resolved from the manifest automatically.
+				// Configure the value under expo.extra.eas.projectId in app.json.
+				const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+				const tokenData = await Notifications.getExpoPushTokenAsync(
+					projectId ? { projectId } : undefined
+				);
 				const token = tokenData.data;
 
 				const uid = auth.currentUser?.uid;
@@ -307,7 +305,8 @@ const styles = StyleSheet.create({
 		fontSize: 15,
 	},
 	scrollContainer: {
-		width: Dimensions.get('window').width,
+		// flex: 1 on the parent SafeAreaView handles full width — no static Dimensions needed
+		flex: 1,
 	},
 	animation: {
 		position: 'absolute',

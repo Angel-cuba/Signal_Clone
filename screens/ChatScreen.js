@@ -31,10 +31,7 @@ import {
 import { timeAgo } from '../utils/timeago';
 import { truncateName } from '../utils/truncateName';
 import { useTheme } from '../hooks/useTheme';
-
-const PAGE_SIZE = 30;
-const TYPING_DEBOUNCE_MS = 800; // delay before writing typing indicator to Firestore
-const TYPING_TTL_MS = 5000;     // consider a user "not typing" after 5s without update
+import { PAGE_SIZE, TYPING_DEBOUNCE_MS, TYPING_TTL_MS } from '../constants/chat';
 
 const ChatScreen = ({ navigation, route }) => {
 	const [input, setInput] = useState('');
@@ -50,7 +47,7 @@ const ChatScreen = ({ navigation, route }) => {
 
 	const chatId = route.params.id;
 
-	// ── Header (stable: depends only on route params and colors) ──────────────
+	// ── Header ────────────────────────────────────────────────────────────────
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: 'Chat',
@@ -94,18 +91,23 @@ const ChatScreen = ({ navigation, route }) => {
 		});
 	}, [navigation, route.params.chatName, route.params.image, colors]);
 
-	// ── Messages subscription — re-runs when pageSize increases (load more) ───
+	// ── Messages subscription ─────────────────────────────────────────────────
+	// Fetches (pageSize + 1) docs so we can detect whether older messages exist
+	// without a separate count query. The extra "probe" doc is sliced off before
+	// display; setHasMore(true) only when the probe is present.
 	useEffect(() => {
 		const messagesRef = collection(db, 'chat', chatId, 'messages');
-		const q = query(messagesRef, orderBy('timestamp', 'asc'), limitToLast(pageSize));
+		const q = query(messagesRef, orderBy('timestamp', 'asc'), limitToLast(pageSize + 1));
 
 		const unsubscribe = onSnapshot(q, (snapshot) => {
-			setMessages(snapshot.docs.map((d) => ({ id: d.id, data: d.data() })));
+			const hasMoreDocs = snapshot.docs.length > pageSize;
+			// Slice off the oldest "probe" doc when we know there are more messages
+			const visibleDocs = hasMoreDocs ? snapshot.docs.slice(1) : snapshot.docs;
+			setMessages(visibleDocs.map((d) => ({ id: d.id, data: d.data() })));
+			setHasMore(hasMoreDocs);
 			setLoadingMore(false);
-			// If fewer docs than requested, there are no older messages
-			setHasMore(snapshot.docs.length >= pageSize);
 
-			// Mark this chat as read for the current user (non-blocking)
+			// Mark as read whenever the user is looking at this screen (non-blocking)
 			const uid = auth.currentUser?.uid;
 			if (uid && snapshot.docs.length > 0) {
 				updateDoc(doc(db, 'chat', chatId), {
@@ -117,7 +119,7 @@ const ChatScreen = ({ navigation, route }) => {
 		return unsubscribe;
 	}, [chatId, pageSize]);
 
-	// ── Chat document subscription — typing indicator + cleanup on unmount ────
+	// ── Chat document subscription — typing indicator + cleanup ───────────────
 	useEffect(() => {
 		const chatRef = doc(db, 'chat', chatId);
 
@@ -127,19 +129,23 @@ const ChatScreen = ({ navigation, route }) => {
 
 			const uid = auth.currentUser?.uid;
 			const now = Date.now();
-			// Find a peer (not self) whose typing timestamp is within TTL
-			const entry = Object.entries(data.typingUsers).find(
-				([id, ts]) => id !== uid && ts?.toMillis?.() > now - TYPING_TTL_MS
-			);
+			// Guard: serverTimestamp() pending writes return null from toMillis()
+			const entry = Object.entries(data.typingUsers).find(([id, ts]) => {
+				if (id === uid) return false;
+				const millis = ts?.toMillis?.();
+				return millis != null && millis > now - TYPING_TTL_MS;
+			});
 			setOtherTyping(entry ? (data.typingNames?.[entry[0]] ?? 'Someone') : null);
 		});
 
 		return () => {
+			// FIX: cancel the debounce timer BEFORE the deleteField write so the
+			// timer callback can't re-set typingUsers after the cleanup deletes it.
+			clearTimeout(typingTimerRef.current);
 			unsubscribe();
-			// Clear our typing indicator when leaving the chat
 			const uid = auth.currentUser?.uid;
 			if (uid) {
-				updateDoc(doc(db, 'chat', chatId), {
+				updateDoc(chatRef, {
 					[`typingUsers.${uid}`]: deleteField(),
 					[`typingNames.${uid}`]: deleteField(),
 				}).catch(() => {});
@@ -164,10 +170,14 @@ const ChatScreen = ({ navigation, route }) => {
 		setPageSize((p) => p + PAGE_SIZE);
 	}, [hasMore, loadingMore]);
 
-	// ── Typing indicator write (debounced) ────────────────────────────────────
+	// ── Typing indicator write ────────────────────────────────────────────────
 	const handleInputChange = useCallback((text) => {
 		setInput(text);
+
+		// FIX: capture both uid and displayName at the same moment so the
+		// deferred setTimeout callback never reads a stale auth.currentUser.
 		const uid = auth.currentUser?.uid;
+		const displayName = auth.currentUser?.displayName ?? uid;
 		if (!uid) return;
 
 		clearTimeout(typingTimerRef.current);
@@ -177,11 +187,11 @@ const ChatScreen = ({ navigation, route }) => {
 			typingTimerRef.current = setTimeout(() => {
 				updateDoc(chatRef, {
 					[`typingUsers.${uid}`]: serverTimestamp(),
-					[`typingNames.${uid}`]: auth.currentUser?.displayName ?? uid,
+					[`typingNames.${uid}`]: displayName,
 				}).catch(() => {});
 			}, TYPING_DEBOUNCE_MS);
 		} else {
-			// Clear immediately when input is empty
+			// Clear immediately when the field is emptied
 			updateDoc(chatRef, {
 				[`typingUsers.${uid}`]: deleteField(),
 				[`typingNames.${uid}`]: deleteField(),
@@ -200,7 +210,7 @@ const ChatScreen = ({ navigation, route }) => {
 		Keyboard.dismiss();
 		setInput('');
 
-		// Clear typing indicator immediately
+		// Clear typing indicator immediately before the async addDoc
 		clearTimeout(typingTimerRef.current);
 		updateDoc(doc(db, 'chat', chatId), {
 			[`typingUsers.${currentUser.uid}`]: deleteField(),
@@ -234,7 +244,6 @@ const ChatScreen = ({ navigation, route }) => {
 					contentContainerStyle={{ paddingTop: 20 }}
 					onContentSizeChange={handleContentSizeChange}
 				>
-					{/* Load earlier messages button */}
 					{hasMore && (
 						<TouchableOpacity
 							style={styles.loadMoreButton}
@@ -253,7 +262,6 @@ const ChatScreen = ({ navigation, route }) => {
 
 					{messages.map(({ id, data }) =>
 						data.email === auth.currentUser?.email ? (
-							// Sent bubble (current user)
 							<View key={id} style={[styles.receiver, { backgroundColor: colors.sentBubble }]}>
 								<Avatar
 									source={{ uri: data.photoURL }}
@@ -269,7 +277,6 @@ const ChatScreen = ({ navigation, route }) => {
 								</Text>
 							</View>
 						) : (
-							// Received bubble (other user)
 							<View key={id} style={[styles.sender, { backgroundColor: colors.receivedBubble }]}>
 								<Avatar
 									source={{ uri: data.photoURL }}
@@ -288,7 +295,6 @@ const ChatScreen = ({ navigation, route }) => {
 					)}
 				</ScrollView>
 
-				{/* Typing indicator — shown above the input bar */}
 				{otherTyping && (
 					<View style={[styles.typingRow, { backgroundColor: colors.footerBackground }]}>
 						<Text style={[styles.typingText, { color: colors.subtext }]}>
@@ -324,12 +330,8 @@ const ChatScreen = ({ navigation, route }) => {
 export default ChatScreen;
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
-	keyboard: {
-		height: '100%',
-	},
+	container: { flex: 1 },
+	keyboard: { height: '100%' },
 	loadMoreButton: {
 		alignItems: 'center',
 		paddingVertical: 10,
