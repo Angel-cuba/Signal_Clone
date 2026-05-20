@@ -44,9 +44,14 @@ try {
   auth = apps.length === 0
     ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
     : getAuth(app);
-} catch {
-  // Fallback: auth ya fue inicializado (evaluación doble de módulo en Fast Refresh)
-  auth = getAuth(app);
+} catch (e) {
+  // Solo capturamos auth/already-initialized (evaluación doble en Fast Refresh).
+  // Cualquier otro error (AsyncStorage no disponible, config inválida) debe propagarse.
+  if (e?.code === 'auth/already-initialized') {
+    auth = getAuth(app);
+  } else {
+    throw e;
+  }
 }
 
 const db = getFirestore(app);
