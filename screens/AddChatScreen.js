@@ -51,6 +51,10 @@ const AddChatScreen = ({ navigation }) => {
 				image: imageURL,
 				timestamp: serverTimestamp(),
 				userId: currentUser.uid,
+				// members[] tracks UIDs of everyone who has participated.
+				// The Cloud Function reads this to find push token recipients.
+				// ChatScreen appends new UIDs via arrayUnion on each sendMessage.
+				members: [currentUser.uid],
 			});
 
 			navigation.goBack();

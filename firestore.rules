@@ -23,6 +23,23 @@ service cloud.firestore {
         && (!changed.hasAll(['lastRead'])    || request.resource.data.lastRead    is map);
     }
 
+    // A user may append their own UID to the members[] array (used by Cloud Functions
+    // to identify push notification recipients). Constraints:
+    //   • Only the members field may change
+    //   • members must remain a list
+    //   • The list may only grow (no removals)
+    //   • The only new entry must be the caller's own UID
+    function isMemberJoin() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let after  = request.resource.data.members;
+      let before = resource.data.get('members', []);
+      return changed.hasOnly(['members', 'typingUsers', 'typingNames', 'lastRead'])
+        && after is list
+        && after.size() == before.size() + 1
+        && after.hasAll(before)
+        && after.hasAll([request.auth.uid]);
+    }
+
     match /chat/{chatId} {
       allow read: if isAuthenticated();
 
@@ -35,9 +52,9 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
 
       // Owner may update anything; any authenticated user may update only
-      // presence fields (typing indicators + read receipts).
+      // presence fields (typing/read receipts) or append their own UID to members[].
       allow update: if isAuthenticated()
-                    && (isOwner(resource.data.userId) || isPresenceUpdate());
+                    && (isOwner(resource.data.userId) || isPresenceUpdate() || isMemberJoin());
 
       match /messages/{messageId} {
         allow read: if isAuthenticated();

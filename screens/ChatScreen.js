@@ -21,6 +21,7 @@ import {
 	doc,
 	addDoc,
 	updateDoc,
+	arrayUnion,
 	deleteField,
 	query,
 	orderBy,
@@ -239,11 +240,14 @@ const ChatScreen = ({ navigation, route }) => {
 		Keyboard.dismiss();
 		setInput('');
 
-		// Clear typing indicator immediately before the async addDoc
+		// Clear typing indicator immediately before the async addDoc.
+		// Also add the sender to members[] so the Cloud Function can find their
+		// recipients on future messages. arrayUnion is a no-op if already present.
 		clearTimeout(typingTimerRef.current);
 		updateDoc(doc(db, 'chat', chatId), {
 			[`typingUsers.${currentUser.uid}`]: deleteField(),
 			[`typingNames.${currentUser.uid}`]: deleteField(),
+			members: arrayUnion(currentUser.uid),
 		}).catch(() => {});
 
 		try {

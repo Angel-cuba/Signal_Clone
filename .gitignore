@@ -17,6 +17,23 @@ web-build/
 .env.local
 .env.production
 
+# Firebase native config files (contain API keys — add via EAS Secrets or CI env vars)
+google-services.json
+GoogleService-Info.plist
+
+# EAS Submit — Google Play service account key (NEVER commit)
+service-account.json
+
+# Firebase emulator state
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+
+# Cloud Functions dependencies
+functions/node_modules/
+
 # AI tools
 .qodo/
 .cursor/
