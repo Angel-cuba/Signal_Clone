@@ -239,18 +239,18 @@ const ChatScreen = ({ navigation, route }) => {
 
 		Keyboard.dismiss();
 		setInput('');
-
-		// Clear typing indicator immediately before the async addDoc.
-		// Also add the sender to members[] so the Cloud Function can find their
-		// recipients on future messages. arrayUnion is a no-op if already present.
 		clearTimeout(typingTimerRef.current);
-		updateDoc(doc(db, 'chat', chatId), {
-			[`typingUsers.${currentUser.uid}`]: deleteField(),
-			[`typingNames.${currentUser.uid}`]: deleteField(),
-			members: arrayUnion(currentUser.uid),
-		}).catch(() => {});
 
 		try {
+			// Await the pre-send update so the Cloud Function always sees
+			// the sender in members[] before the message document is created.
+			// Also clears the typing indicator atomically.
+			await updateDoc(doc(db, 'chat', chatId), {
+				[`typingUsers.${currentUser.uid}`]: deleteField(),
+				[`typingNames.${currentUser.uid}`]: deleteField(),
+				members: arrayUnion(currentUser.uid),
+			});
+
 			await addDoc(collection(db, 'chat', chatId, 'messages'), {
 				timestamp: serverTimestamp(),
 				message: trimmed,

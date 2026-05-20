@@ -24,20 +24,25 @@ service cloud.firestore {
     }
 
     // A user may append their own UID to the members[] array (used by Cloud Functions
-    // to identify push notification recipients). Constraints:
-    //   • Only the members field may change
+    // to identify push notification recipients).
+    //
+    // Constraints:
+    //   • Only members + presence fields may change (ChatScreen combines both in one write)
     //   • members must remain a list
-    //   • The list may only grow (no removals)
-    //   • The only new entry must be the caller's own UID
+    //   • size >= before: allows both first-join (+1) and no-op arrayUnion (same size)
+    //     when the caller is already a member — arrayUnion is idempotent on the server
+    //   • no existing entries may be removed (hasAll(before))
+    //   • the caller's own UID must be present after the write (can't add others)
     function isMemberJoin() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      let after  = request.resource.data.members;
-      let before = resource.data.get('members', []);
+      let after   = request.resource.data.members;
+      let before  = resource.data.get('members', []);
       return changed.hasOnly(['members', 'typingUsers', 'typingNames', 'lastRead'])
+        && changed.hasAny(['members'])
         && after is list
-        && after.size() == before.size() + 1
-        && after.hasAll(before)
-        && after.hasAll([request.auth.uid]);
+        && after.size() >= before.size()      // >= handles no-op arrayUnion for returning members
+        && after.hasAll(before)               // no removals
+        && after.hasAll([request.auth.uid]);  // caller's own UID must be present
     }
 
     match /chat/{chatId} {
@@ -60,6 +65,7 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated()
                       && request.resource.data.email == request.auth.token.email
+                      && request.resource.data.uid == request.auth.uid
                       && request.resource.data.message is string
                       && request.resource.data.message.size() > 0
                       && request.resource.data.message.size() <= 2000;
