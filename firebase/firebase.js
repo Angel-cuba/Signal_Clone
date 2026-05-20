@@ -50,6 +50,7 @@ try {
   if (e?.code === 'auth/already-initialized') {
     auth = getAuth(app);
   } else {
+    console.error('[firebase] initializeAuth failed:', e?.code, e?.message);
     throw e;
   }
 }
