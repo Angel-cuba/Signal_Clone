@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useLayoutEffect, useState, useRef } from 'react';
+import React, { useLayoutEffect, useState, useRef, useEffect, useCallback } from 'react';
 import {
 	Alert,
 	StyleSheet,
@@ -11,25 +11,46 @@ import {
 	ScrollView,
 	Keyboard,
 	Platform,
+	ActivityIndicator,
 } from 'react-native';
 import { Avatar, Input } from '@rneui/themed';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import {
+	collection,
+	doc,
+	addDoc,
+	updateDoc,
+	deleteField,
+	query,
+	orderBy,
+	onSnapshot,
+	serverTimestamp,
+	limitToLast,
+} from 'firebase/firestore';
 import { timeAgo } from '../utils/timeago';
 import { truncateName } from '../utils/truncateName';
 import { useTheme } from '../hooks/useTheme';
 
+const PAGE_SIZE = 30;
+const TYPING_DEBOUNCE_MS = 800; // delay before writing typing indicator to Firestore
+const TYPING_TTL_MS = 5000;     // consider a user "not typing" after 5s without update
+
 const ChatScreen = ({ navigation, route }) => {
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState([]);
+	const [pageSize, setPageSize] = useState(PAGE_SIZE);
+	const [hasMore, setHasMore] = useState(true);
+	const [loadingMore, setLoadingMore] = useState(false);
+	const [otherTyping, setOtherTyping] = useState(null); // display name of typing peer
 	const scrollViewRef = useRef(null);
-	// Tracks whether the initial scroll-to-bottom has been done (instant, no animation)
-	// Subsequent scrolls (new messages) use animation so the user sees the update
 	const hasScrolledInitially = useRef(false);
-	const { colors, isDark } = useTheme();
+	const typingTimerRef = useRef(null);
+	const { colors } = useTheme();
 
-	// Header — does NOT depend on messages (content never changes with messages)
+	const chatId = route.params.id;
+
+	// ── Header (stable: depends only on route params and colors) ──────────────
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: 'Chat',
@@ -61,14 +82,7 @@ const ChatScreen = ({ navigation, route }) => {
 				</View>
 			),
 			headerRight: () => (
-				<View
-					style={{
-						flexDirection: 'row',
-						justifyContent: 'space-between',
-						width: 80,
-						marginRight: 20,
-					}}
-				>
+				<View style={{ flexDirection: 'row', justifyContent: 'space-between', width: 80, marginRight: 20 }}>
 					<TouchableOpacity>
 						<FontAwesome name="video-camera" size={24} color="white" />
 					</TouchableOpacity>
@@ -78,45 +92,134 @@ const ChatScreen = ({ navigation, route }) => {
 				</View>
 			),
 		});
-	}, [navigation, route.params.chatName, route.params.image]);
+	}, [navigation, route.params.chatName, route.params.image, colors]);
 
-	useLayoutEffect(() => {
-		const messagesRef = collection(db, 'chat', route.params.id, 'messages');
-		const q = query(messagesRef, orderBy('timestamp', 'asc'));
-		const unsubscribe = onSnapshot(q, (snapshot) =>
-			setMessages(
-				snapshot.docs.map((doc) => ({
-					id: doc.id,
-					data: doc.data(),
-				}))
-			)
-		);
+	// ── Messages subscription — re-runs when pageSize increases (load more) ───
+	useEffect(() => {
+		const messagesRef = collection(db, 'chat', chatId, 'messages');
+		const q = query(messagesRef, orderBy('timestamp', 'asc'), limitToLast(pageSize));
+
+		const unsubscribe = onSnapshot(q, (snapshot) => {
+			setMessages(snapshot.docs.map((d) => ({ id: d.id, data: d.data() })));
+			setLoadingMore(false);
+			// If fewer docs than requested, there are no older messages
+			setHasMore(snapshot.docs.length >= pageSize);
+
+			// Mark this chat as read for the current user (non-blocking)
+			const uid = auth.currentUser?.uid;
+			if (uid && snapshot.docs.length > 0) {
+				updateDoc(doc(db, 'chat', chatId), {
+					[`lastRead.${uid}`]: serverTimestamp(),
+				}).catch(() => {});
+			}
+		});
+
 		return unsubscribe;
-	}, [route]);
+	}, [chatId, pageSize]);
 
-	const sendMessage = async () => {
+	// ── Chat document subscription — typing indicator + cleanup on unmount ────
+	useEffect(() => {
+		const chatRef = doc(db, 'chat', chatId);
+
+		const unsubscribe = onSnapshot(chatRef, (snapshot) => {
+			const data = snapshot.data();
+			if (!data?.typingUsers) { setOtherTyping(null); return; }
+
+			const uid = auth.currentUser?.uid;
+			const now = Date.now();
+			// Find a peer (not self) whose typing timestamp is within TTL
+			const entry = Object.entries(data.typingUsers).find(
+				([id, ts]) => id !== uid && ts?.toMillis?.() > now - TYPING_TTL_MS
+			);
+			setOtherTyping(entry ? (data.typingNames?.[entry[0]] ?? 'Someone') : null);
+		});
+
+		return () => {
+			unsubscribe();
+			// Clear our typing indicator when leaving the chat
+			const uid = auth.currentUser?.uid;
+			if (uid) {
+				updateDoc(doc(db, 'chat', chatId), {
+					[`typingUsers.${uid}`]: deleteField(),
+					[`typingNames.${uid}`]: deleteField(),
+				}).catch(() => {});
+			}
+		};
+	}, [chatId]);
+
+	// ── Auto-scroll ───────────────────────────────────────────────────────────
+	const handleContentSizeChange = useCallback(() => {
+		if (!hasScrolledInitially.current) {
+			scrollViewRef.current?.scrollToEnd({ animated: false });
+			hasScrolledInitially.current = true;
+		} else {
+			scrollViewRef.current?.scrollToEnd({ animated: true });
+		}
+	}, []);
+
+	// ── Load earlier messages ─────────────────────────────────────────────────
+	const loadMore = useCallback(() => {
+		if (!hasMore || loadingMore) return;
+		setLoadingMore(true);
+		setPageSize((p) => p + PAGE_SIZE);
+	}, [hasMore, loadingMore]);
+
+	// ── Typing indicator write (debounced) ────────────────────────────────────
+	const handleInputChange = useCallback((text) => {
+		setInput(text);
+		const uid = auth.currentUser?.uid;
+		if (!uid) return;
+
+		clearTimeout(typingTimerRef.current);
+		const chatRef = doc(db, 'chat', chatId);
+
+		if (text.trim()) {
+			typingTimerRef.current = setTimeout(() => {
+				updateDoc(chatRef, {
+					[`typingUsers.${uid}`]: serverTimestamp(),
+					[`typingNames.${uid}`]: auth.currentUser?.displayName ?? uid,
+				}).catch(() => {});
+			}, TYPING_DEBOUNCE_MS);
+		} else {
+			// Clear immediately when input is empty
+			updateDoc(chatRef, {
+				[`typingUsers.${uid}`]: deleteField(),
+				[`typingNames.${uid}`]: deleteField(),
+			}).catch(() => {});
+		}
+	}, [chatId]);
+
+	// ── Send message ──────────────────────────────────────────────────────────
+	const sendMessage = useCallback(async () => {
 		const trimmed = input.trim();
 		if (!trimmed) return;
 
 		const currentUser = auth.currentUser;
-		if (!currentUser) return; // guard against race with sign-out
+		if (!currentUser) return;
 
 		Keyboard.dismiss();
-		setInput(''); // optimistic clear
+		setInput('');
+
+		// Clear typing indicator immediately
+		clearTimeout(typingTimerRef.current);
+		updateDoc(doc(db, 'chat', chatId), {
+			[`typingUsers.${currentUser.uid}`]: deleteField(),
+			[`typingNames.${currentUser.uid}`]: deleteField(),
+		}).catch(() => {});
 
 		try {
-			await addDoc(collection(db, 'chat', route.params.id, 'messages'), {
+			await addDoc(collection(db, 'chat', chatId, 'messages'), {
 				timestamp: serverTimestamp(),
 				message: trimmed,
 				displayName: currentUser.displayName,
 				email: currentUser.email,
 				photoURL: currentUser.photoURL,
 			});
-		} catch (error) {
-			setInput(trimmed); // restore so user can retry
+		} catch {
+			setInput(trimmed); // restore so the user can retry
 			Alert.alert('Send failed', 'Your message could not be sent. Please try again.');
 		}
-	};
+	}, [input, chatId]);
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -129,26 +232,33 @@ const ChatScreen = ({ navigation, route }) => {
 				<ScrollView
 					ref={scrollViewRef}
 					contentContainerStyle={{ paddingTop: 20 }}
-					onContentSizeChange={() => {
-						if (!hasScrolledInitially.current) {
-							scrollViewRef.current?.scrollToEnd({ animated: false });
-							hasScrolledInitially.current = true;
-						} else {
-							scrollViewRef.current?.scrollToEnd({ animated: true });
-						}
-					}}
+					onContentSizeChange={handleContentSizeChange}
 				>
+					{/* Load earlier messages button */}
+					{hasMore && (
+						<TouchableOpacity
+							style={styles.loadMoreButton}
+							onPress={loadMore}
+							disabled={loadingMore}
+						>
+							{loadingMore ? (
+								<ActivityIndicator size="small" color={colors.primary} />
+							) : (
+								<Text style={[styles.loadMoreText, { color: colors.primary }]}>
+									Load earlier messages
+								</Text>
+							)}
+						</TouchableOpacity>
+					)}
+
 					{messages.map(({ id, data }) =>
 						data.email === auth.currentUser?.email ? (
+							// Sent bubble (current user)
 							<View key={id} style={[styles.receiver, { backgroundColor: colors.sentBubble }]}>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									rounded
-									containerStyle={{
-										position: 'absolute',
-										right: -33,
-										top: 5,
-									}}
+									containerStyle={{ position: 'absolute', right: -33, top: 5 }}
 									size={30}
 								/>
 								<Text style={[styles.receiverText, { color: colors.sentText }]}>
@@ -159,15 +269,12 @@ const ChatScreen = ({ navigation, route }) => {
 								</Text>
 							</View>
 						) : (
+							// Received bubble (other user)
 							<View key={id} style={[styles.sender, { backgroundColor: colors.receivedBubble }]}>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									rounded
-									containerStyle={{
-										position: 'absolute',
-										top: 5,
-										left: -33,
-									}}
+									containerStyle={{ position: 'absolute', top: 5, left: -33 }}
 									size={30}
 								/>
 								<Text style={[styles.senderText, { color: colors.receivedText }]}>
@@ -180,22 +287,29 @@ const ChatScreen = ({ navigation, route }) => {
 						)
 					)}
 				</ScrollView>
+
+				{/* Typing indicator — shown above the input bar */}
+				{otherTyping && (
+					<View style={[styles.typingRow, { backgroundColor: colors.footerBackground }]}>
+						<Text style={[styles.typingText, { color: colors.subtext }]}>
+							{otherTyping} is typing…
+						</Text>
+					</View>
+				)}
+
 				<View style={[styles.footer, { backgroundColor: colors.footerBackground }]}>
 					<Input
 						placeholder="Write your message…"
 						value={input}
-						onChangeText={(text) => setInput(text)}
+						onChangeText={handleInputChange}
 						onSubmitEditing={sendMessage}
-						style={[styles.textInput, { backgroundColor: colors.inputBackground, color: colors.inputText }]}
+						style={[styles.textInput, {
+							backgroundColor: colors.inputBackground,
+							color: colors.inputText,
+						}]}
 					/>
 					<TouchableOpacity
-						style={{
-							width: 60,
-							position: 'absolute',
-							top: 6,
-							right: 0,
-							opacity: input.trim() ? 1 : 0.3,
-						}}
+						style={[styles.sendButton, { opacity: input.trim() ? 1 : 0.3 }]}
 						onPress={sendMessage}
 						disabled={!input.trim()}
 					>
@@ -216,6 +330,15 @@ const styles = StyleSheet.create({
 	keyboard: {
 		height: '100%',
 	},
+	loadMoreButton: {
+		alignItems: 'center',
+		paddingVertical: 10,
+		marginBottom: 4,
+	},
+	loadMoreText: {
+		fontSize: 13,
+		fontWeight: Platform.OS === 'android' ? 'bold' : '600',
+	},
 	footer: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -233,6 +356,20 @@ const styles = StyleSheet.create({
 		borderColor: 'transparent',
 		padding: 10,
 		borderRadius: 30,
+	},
+	sendButton: {
+		width: 60,
+		position: 'absolute',
+		top: 6,
+		right: 0,
+	},
+	typingRow: {
+		paddingHorizontal: 20,
+		paddingVertical: 4,
+	},
+	typingText: {
+		fontSize: 12,
+		fontStyle: 'italic',
 	},
 	receiverText: {
 		fontSize: 16,

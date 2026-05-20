@@ -2,30 +2,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: usuario autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper: el usuario es el propietario del recurso
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // Chats: cualquier usuario autenticado puede leer y crear
-    // Solo el creador (userId) puede eliminar
+    // Fields any authenticated user may freely update on a chat document.
+    // Typing indicators (typingUsers, typingNames) and read receipts (lastRead)
+    // are written by ALL participants — not just the chat creator.
+    function isPresenceUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['typingUsers', 'typingNames', 'lastRead']);
+    }
+
     match /chat/{chatId} {
       allow read: if isAuthenticated();
+
       allow create: if isAuthenticated()
                     && request.resource.data.chatName is string
                     && request.resource.data.chatName.size() > 0
                     && request.resource.data.chatName.size() <= 50
                     && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
-      allow update: if isAuthenticated() && isOwner(resource.data.userId);
 
-      // Mensajes: usuarios autenticados pueden leer
-      // Solo pueden escribir su propio mensaje (email debe coincidir)
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+
+      // Owner may update anything; any authenticated user may update only
+      // presence fields (typing indicators + read receipts).
+      allow update: if isAuthenticated()
+                    && (isOwner(resource.data.userId) || isPresenceUpdate());
+
       match /messages/{messageId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated()
@@ -35,8 +43,14 @@ service cloud.firestore {
                       && request.resource.data.message.size() <= 2000;
         allow delete: if isAuthenticated()
                       && resource.data.email == request.auth.token.email;
-        allow update: if false; // Los mensajes no se editan
+        allow update: if false; // messages are immutable
       }
+    }
+
+    // Users collection: stores push tokens and profile metadata.
+    // Each user can only read and write their own document.
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
     }
   }
 }

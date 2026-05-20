@@ -18,7 +18,10 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Signal Clone needs notification permission to alert you when new messages arrive."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,6 +31,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#2C6BED",
+          "defaultChannel": "messages"
+        }
+      ]
+    ]
   }
 }

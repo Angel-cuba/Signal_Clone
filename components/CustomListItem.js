@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Alert, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { ListItem, Avatar } from '@rneui/themed';
 import { auth, db } from '../firebase/firebase';
@@ -11,23 +11,48 @@ import LottieView from 'lottie-react-native';
 import { AntDesign } from '@expo/vector-icons';
 import { truncateName } from '../utils/truncateName';
 
-const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
+// A peer is "typing" if their timestamp is within this window.
+// Must match the TTL used in ChatScreen.
+const TYPING_TTL_MS = 5000;
+
+const CustomListItem = ({ id, chatName, enterChat, userId, image, lastRead, typingUsers, typingNames }) => {
 	const [chatMessage, setChatMessage] = useState([]);
 	const { colors } = useTheme();
 
+	// Subscribe to the last message for the preview (limit 1 → minimal Firestore reads)
 	useEffect(() => {
 		const messagesRef = collection(db, 'chat', id, 'messages');
-		// limit(1): solo necesitamos el último mensaje para el preview — reduce lecturas de Firestore
 		const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
 		const unsubscribe = onSnapshot(q, (snapshot) =>
-			setChatMessage(snapshot.docs.map((doc) => doc.data()))
+			setChatMessage(snapshot.docs.map((d) => d.data()))
 		);
 		return unsubscribe;
 	}, [id]);
 
-	// Null-safe: currentUser puede ser null durante la transición de auth al arrancar en frío
-	const currentUser = auth.currentUser?.uid ?? null;
+	const currentUid = auth.currentUser?.uid ?? null;
 
+	// ── Typing indicator ──────────────────────────────────────────────────────
+	// Re-computed when typingUsers prop changes (HomeScreen's onSnapshot fires on every update)
+	const typerName = useMemo(() => {
+		if (!typingUsers || !currentUid) return null;
+		const now = Date.now();
+		const entry = Object.entries(typingUsers).find(
+			([uid, ts]) => uid !== currentUid && ts?.toMillis?.() > now - TYPING_TTL_MS
+		);
+		return entry ? (typingNames?.[entry[0]] ?? 'Someone') : null;
+	}, [typingUsers, typingNames, currentUid]);
+
+	// ── Unread badge ──────────────────────────────────────────────────────────
+	// Show a dot when the last message is newer than the user's lastRead timestamp
+	const hasUnread = useMemo(() => {
+		if (!currentUid || !chatMessage[0]?.timestamp) return false;
+		if (!lastRead?.[currentUid]) return true; // never read this chat
+		const msgTs = chatMessage[0].timestamp?.seconds ?? 0;
+		const readTs = lastRead[currentUid]?.seconds ?? 0;
+		return msgTs > readTs;
+	}, [chatMessage, lastRead, currentUid]);
+
+	// ── Delete chat room ──────────────────────────────────────────────────────
 	const deleteChatRoom = () => {
 		Alert.alert(
 			'Delete chat',
@@ -39,8 +64,8 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 					style: 'destructive',
 					onPress: async () => {
 						try {
-							// Firestore limita a 500 escrituras por batch — chunkeamos para chats grandes
-							const BATCH_SIZE = 499;
+							// Batch-delete messages first (Firestore doesn't cascade-delete subcollections)
+							const BATCH_SIZE = 499; // Firestore limit is 500 writes per batch
 							const messagesRef = collection(db, 'chat', id, 'messages');
 							const snapshot = await getDocs(messagesRef);
 
@@ -51,7 +76,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 							}
 
 							await deleteDoc(doc(db, 'chat', id));
-						} catch (error) {
+						} catch {
 							Alert.alert('Error', 'Could not delete the chat. Please try again.');
 						}
 					},
@@ -69,10 +94,7 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 			containerStyle={{ backgroundColor: colors.background }}
 		>
 			{chatMessage[0] ? (
-				<Avatar
-					rounded
-					source={{ uri: chatMessage[0].photoURL }}
-				/>
+				<Avatar rounded source={{ uri: chatMessage[0].photoURL }} />
 			) : (
 				<LottieView
 					style={{ height: 30 }}
@@ -84,35 +106,42 @@ const CustomListItem = ({ id, chatName, enterChat, userId, image }) => {
 
 			<ListItem.Content>
 				<ListItem.Title
-					style={{
-						color: colors.text,
-						fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-					}}
+					style={{ color: colors.text, fontWeight: Platform.OS === 'android' ? 'bold' : '700' }}
 					numberOfLines={1}
 					ellipsizeMode="tail"
 				>
 					{displayName}
 				</ListItem.Title>
+
 				<ListItem.Subtitle
-					style={{ color: colors.subtext }}
+					style={{ color: typerName ? colors.primary : colors.subtext }}
 					numberOfLines={1}
 					ellipsizeMode="tail"
 				>
-					{chatMessage[0] ? (
-						<Text
-							style={{
-								fontWeight: Platform.OS === 'android' ? 'bold' : '600',
-								color: colors.subtext,
-							}}
-						>
-							{chatMessage[0].displayName}
+					{typerName ? (
+						// Show typing indicator when a peer is actively typing
+						<Text style={{ fontStyle: 'italic', color: colors.primary }}>
+							{typerName} is typing…
 						</Text>
-					) : null}
-					{chatMessage[0] ? ': ' : 'No messages yet'}
-					{chatMessage[0] ? chatMessage[0].message : null}
+					) : (
+						<>
+							{chatMessage[0] ? (
+								<Text style={{ fontWeight: Platform.OS === 'android' ? 'bold' : '600', color: colors.subtext }}>
+									{chatMessage[0].displayName}
+								</Text>
+							) : null}
+							{chatMessage[0] ? ': ' : 'No messages yet'}
+							{chatMessage[0]?.message ?? null}
+						</>
+					)}
 				</ListItem.Subtitle>
 			</ListItem.Content>
-			{currentUser && currentUser === userId && (
+
+			{/* Unread badge dot */}
+			{hasUnread && <View style={styles.unreadDot} />}
+
+			{/* Delete button — only visible to the chat creator */}
+			{currentUid && currentUid === userId && (
 				<TouchableOpacity style={styles.delete} onPress={deleteChatRoom}>
 					<AntDesign name="delete" size={26} color="red" />
 				</TouchableOpacity>
@@ -125,6 +154,14 @@ export default CustomListItem;
 
 const styles = StyleSheet.create({
 	delete: {
-		marginRight: 20,
+		marginRight: 4,
+	},
+	unreadDot: {
+		width: 10,
+		height: 10,
+		borderRadius: 5,
+		backgroundColor: '#e74c3c',
+		marginRight: 8,
+		alignSelf: 'center',
 	},
 });
