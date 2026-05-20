@@ -132,70 +132,50 @@ const HomeScreen = ({ navigation }) => {
 	// ── Header ────────────────────────────────────────────────────────────────
 	useLayoutEffect(() => {
 		navigation.setOptions({
-			title: 'Chats',
-			headerTitleAlign: 'center',
-			headerStyle: { backgroundColor: colors.primary },
+			title: 'Messages',
+			headerTitleAlign: 'left',
+			headerStyle: { backgroundColor: colors.headerBackground },
+			headerShadowVisible: false,
 			headerTitleStyle: {
 				color: colors.headerTitle,
-				fontWeight: Platform.OS === 'android' ? 'bold' : '800',
-				fontSize: 20,
+				fontWeight: '700',
+				fontSize: 22,
+				letterSpacing: -0.5,
 			},
 			headerTintColor: colors.headerTitle,
 			headerLeft: () => (
-				<View style={{ marginLeft: 5 }}>
-					<TouchableOpacity
-						onPress={signOutUser}
-						activeOpacity={0.5}
-						style={{ flexDirection: 'row', alignItems: 'center' }}
-					>
-						<Avatar rounded source={{ uri: auth.currentUser?.photoURL }} />
-						<Text style={{ fontWeight: Platform.OS === 'android' ? 'bold' : '800', color: colors.sentText }}>
-							{auth.currentUser?.displayName}
-						</Text>
-					</TouchableOpacity>
-				</View>
+				<TouchableOpacity
+					onPress={signOutUser}
+					activeOpacity={0.7}
+					style={{ marginLeft: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+				>
+					<Avatar
+						rounded
+						source={{ uri: auth.currentUser?.photoURL }}
+						size={32}
+						containerStyle={{
+							borderWidth: 2,
+							borderColor: colors.accent,
+						}}
+					/>
+				</TouchableOpacity>
 			),
 			headerRight: () => (
-				<View
+				<TouchableOpacity
+					onPress={() => navigation.navigate('AddChat')}
+					activeOpacity={0.7}
 					style={{
-						marginRight: Platform.isPad ? 50 : 10,
-						flexDirection: 'row',
-						justifyContent: 'space-between',
+						marginRight: 16,
+						width: 36,
+						height: 36,
+						borderRadius: 18,
+						backgroundColor: colors.accent,
+						justifyContent: 'center',
 						alignItems: 'center',
-						...Platform.select({ web: { marginRight: 50 } }),
 					}}
 				>
-					<Text
-						style={{
-							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
-							color: colors.headerTitle,
-							position: 'absolute',
-							left: -14,
-							bottom: Platform.isPad ? 24 : 16,
-						}}
-					>
-						New
-					</Text>
-					<TouchableOpacity onPress={() => navigation.navigate('AddChat')} activeOpacity={0.5}>
-						<LottieView
-							style={{ height: Platform.isPad ? 60 : 50 }}
-							source={require('../assets/animations/8026-taking-notes.json')}
-							autoPlay
-							speed={0.5}
-						/>
-					</TouchableOpacity>
-					<Text
-						style={{
-							fontWeight: Platform.OS === 'android' ? 'bold' : '800',
-							color: colors.headerTitle,
-							position: 'absolute',
-							right: -14,
-							bottom: Platform.isPad ? 24 : 16,
-						}}
-					>
-						chat
-					</Text>
-				</View>
+					<Ionicons name="add" size={22} color="#0D0D0D" />
+				</TouchableOpacity>
 			),
 		});
 	}, [navigation, colors, signOutUser]);
@@ -215,10 +195,10 @@ const HomeScreen = ({ navigation }) => {
 		<SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
 			{/* Search bar */}
 			<View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
-				<Ionicons name="search" size={16} color={colors.subtext} style={{ marginRight: 8 }} />
+				<Ionicons name="search-outline" size={15} color={colors.subtext} style={{ marginRight: 8 }} />
 				<TextInput
 					style={[styles.searchInput, { color: colors.text }]}
-					placeholder="Search chats…"
+					placeholder="Search messages…"
 					placeholderTextColor={colors.subtext}
 					value={searchQuery}
 					onChangeText={setSearchQuery}
@@ -288,18 +268,18 @@ const styles = StyleSheet.create({
 	searchBar: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginHorizontal: 12,
-		marginVertical: 8,
-		paddingHorizontal: 12,
-		paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-		borderRadius: 10,
+		marginHorizontal: 16,
+		marginVertical: 10,
+		paddingHorizontal: 14,
+		paddingVertical: Platform.OS === 'ios' ? 9 : 6,
+		borderRadius: 12,
 	},
 	searchInput: {
 		flex: 1,
-		fontSize: 15,
+		fontSize: 14,
+		letterSpacing: 0.1,
 	},
 	scrollContainer: {
-		// flex: 1 on the parent SafeAreaView handles full width — no static Dimensions needed
 		flex: 1,
 	},
 	animation: {
@@ -309,13 +289,14 @@ const styles = StyleSheet.create({
 	},
 	emptyState: {
 		alignItems: 'center',
-		marginTop: 60,
-		paddingHorizontal: 30,
+		marginTop: 80,
+		paddingHorizontal: 40,
 	},
 	emptyStateText: {
 		textAlign: 'center',
-		fontSize: 16,
-		marginTop: 12,
-		fontWeight: Platform.OS === 'android' ? 'bold' : '600',
+		fontSize: 15,
+		marginTop: 16,
+		fontWeight: '500',
+		letterSpacing: 0.1,
 	},
 });

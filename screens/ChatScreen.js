@@ -4,6 +4,7 @@ import {
 	Alert,
 	StyleSheet,
 	Text,
+	TextInput,
 	View,
 	TouchableOpacity,
 	KeyboardAvoidingView,
@@ -13,7 +14,7 @@ import {
 	ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar, Input } from '@rneui/themed';
+import { Avatar } from '@rneui/themed';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase/firebase';
 import {
@@ -301,39 +302,44 @@ const ChatScreen = ({ navigation, route }) => {
 						</TouchableOpacity>
 					)}
 
-					{messages.map(({ id, data }) =>
-						data.email === auth.currentUser?.email ? (
-							<View key={id} style={[styles.receiver, { backgroundColor: colors.sentBubble }]}>
+					{messages.map(({ id, data }) => {
+						const isMine = data.email === auth.currentUser?.email;
+						return isMine ? (
+							<View key={id} style={styles.bubbleRowSent}>
+								<View style={[styles.sentBubble, { backgroundColor: colors.sentBubble }]}>
+									<Text style={[styles.bubbleText, { color: colors.sentText }]}>
+										{data.message}
+									</Text>
+									<Text style={[styles.timeago, { color: colors.sentText, opacity: 0.55 }]}>
+										{timeAgo(data.timestamp?.seconds)}
+									</Text>
+								</View>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									rounded
-									containerStyle={{ position: 'absolute', right: -33, top: 5 }}
-									size={30}
+									size={26}
+									containerStyle={{ alignSelf: 'flex-end', marginBottom: 2 }}
 								/>
-								<Text style={[styles.receiverText, { color: colors.sentText }]}>
-									{data.message}
-								</Text>
-								<Text style={[styles.receiverTimeago, { color: colors.timeago }]}>
-									{timeAgo(data.timestamp?.seconds)}
-								</Text>
 							</View>
 						) : (
-							<View key={id} style={[styles.sender, { backgroundColor: colors.receivedBubble }]}>
+							<View key={id} style={styles.bubbleRowReceived}>
 								<Avatar
 									source={{ uri: data.photoURL }}
 									rounded
-									containerStyle={{ position: 'absolute', top: 5, left: -33 }}
-									size={30}
+									size={26}
+									containerStyle={{ alignSelf: 'flex-end', marginBottom: 2 }}
 								/>
-								<Text style={[styles.senderText, { color: colors.receivedText }]}>
-									{data.message}
-								</Text>
-								<Text style={[styles.senderTimeago, { color: colors.timeago }]}>
-									{timeAgo(data.timestamp?.seconds)}
-								</Text>
+								<View style={[styles.receivedBubble, { backgroundColor: colors.receivedBubble }]}>
+									<Text style={[styles.bubbleText, { color: colors.receivedText }]}>
+										{data.message}
+									</Text>
+									<Text style={[styles.timeago, { color: colors.subtext }]}>
+										{timeAgo(data.timestamp?.seconds)}
+									</Text>
+								</View>
 							</View>
-						)
-					)}
+						);
+					})}
 				</ScrollView>
 
 				{otherTyping && (
@@ -344,24 +350,27 @@ const ChatScreen = ({ navigation, route }) => {
 					</View>
 				)}
 
-				<View style={[styles.footer, { backgroundColor: colors.footerBackground }]}>
-					<Input
-						placeholder="Write your message…"
+				<View style={[styles.footer, { backgroundColor: colors.footerBackground, borderTopColor: colors.separator }]}>
+					<TextInput
+						placeholder="Message…"
+						placeholderTextColor={colors.subtext}
 						value={input}
 						onChangeText={handleInputChange}
 						onSubmitEditing={sendMessage}
 						maxLength={2000}
+						multiline
 						style={[styles.textInput, {
-							backgroundColor: colors.inputBackground,
+							backgroundColor: colors.surface,
 							color: colors.inputText,
 						}]}
 					/>
 					<TouchableOpacity
-						style={[styles.sendButton, { opacity: input.trim() ? 1 : 0.3 }]}
+						style={[styles.sendButton, { backgroundColor: colors.accent, opacity: input.trim() ? 1 : 0.35 }]}
 						onPress={sendMessage}
 						disabled={!input.trim()}
+						activeOpacity={0.8}
 					>
-						<Ionicons name="send" size={Platform.isPad ? 45 : 40} color={colors.primary} />
+						<Ionicons name="arrow-up" size={20} color="#0D0D0D" />
 					</TouchableOpacity>
 				</View>
 			</KeyboardAvoidingView>
@@ -376,87 +385,90 @@ const styles = StyleSheet.create({
 	keyboard: { height: '100%' },
 	loadMoreButton: {
 		alignItems: 'center',
-		paddingVertical: 10,
+		paddingVertical: 12,
 		marginBottom: 4,
 	},
 	loadMoreText: {
 		fontSize: 13,
-		fontWeight: Platform.OS === 'android' ? 'bold' : '600',
+		fontWeight: '500',
+		letterSpacing: 0.2,
 	},
+	// Bubble rows
+	bubbleRowSent: {
+		flexDirection: 'row',
+		alignItems: 'flex-end',
+		justifyContent: 'flex-end',
+		paddingHorizontal: 12,
+		marginBottom: 8,
+		gap: 6,
+	},
+	bubbleRowReceived: {
+		flexDirection: 'row',
+		alignItems: 'flex-end',
+		justifyContent: 'flex-start',
+		paddingHorizontal: 12,
+		marginBottom: 8,
+		gap: 6,
+	},
+	sentBubble: {
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		borderRadius: 18,
+		borderBottomRightRadius: 4,
+		maxWidth: '72%',
+	},
+	receivedBubble: {
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		borderRadius: 18,
+		borderBottomLeftRadius: 4,
+		maxWidth: '72%',
+	},
+	bubbleText: {
+		fontSize: 15,
+		lineHeight: 21,
+		fontWeight: '400',
+	},
+	timeago: {
+		fontSize: 10,
+		marginTop: 4,
+		fontWeight: '400',
+		letterSpacing: 0.2,
+	},
+	// Footer
 	footer: {
 		flexDirection: 'row',
-		alignItems: 'center',
-		width: '100%',
-		paddingTop: 15,
-		paddingRight: 55,
-		paddingBottom: Platform.OS === 'android' ? 1 : 0,
+		alignItems: 'flex-end',
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		gap: 8,
+		borderTopWidth: StyleSheet.hairlineWidth,
 	},
 	textInput: {
-		bottom: 10,
-		height: 50,
-		width: '100%',
 		flex: 1,
-		marginRight: 15,
-		borderColor: 'transparent',
-		padding: 10,
-		borderRadius: 30,
+		maxHeight: 120,
+		borderRadius: 20,
+		paddingHorizontal: 16,
+		paddingTop: Platform.OS === 'ios' ? 10 : 8,
+		paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+		fontSize: 15,
 	},
 	sendButton: {
-		width: 60,
-		position: 'absolute',
-		top: 6,
-		right: 0,
+		width: 38,
+		height: 38,
+		borderRadius: 19,
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginBottom: 1,
 	},
+	// Typing
 	typingRow: {
 		paddingHorizontal: 20,
-		paddingVertical: 4,
+		paddingVertical: 6,
 	},
 	typingText: {
 		fontSize: 12,
 		fontStyle: 'italic',
-	},
-	receiverText: {
-		fontSize: 16,
-		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-		marginLeft: 2,
-	},
-	receiver: {
-		padding: 15,
-		alignSelf: 'flex-end',
-		borderTopLeftRadius: 10,
-		borderBottomLeftRadius: 6,
-		borderBottomRightRadius: 4,
-		borderTopRightRadius: 5,
-		marginRight: 50,
-		marginBottom: 28,
-		maxWidth: '80%',
-		position: 'relative',
-	},
-	receiverTimeago: {
-		position: 'absolute',
-		bottom: -14,
-		right: 16,
-		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-		fontSize: 12,
-	},
-	senderText: {
-		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-		fontSize: 16,
-	},
-	sender: {
-		padding: 15,
-		alignSelf: 'flex-start',
-		borderRadius: 10,
-		marginLeft: 50,
-		marginBottom: 28,
-		maxWidth: '80%',
-		position: 'relative',
-	},
-	senderTimeago: {
-		position: 'absolute',
-		bottom: -14,
-		left: 16,
-		fontWeight: Platform.OS === 'android' ? 'bold' : '700',
-		fontSize: 12,
+		letterSpacing: 0.1,
 	},
 });
